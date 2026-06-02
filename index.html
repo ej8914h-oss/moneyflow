@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MoneyFlow — 스마트 자산관리</title>
+<meta name="description" content="Firebase 기반 개인 자산관리 앱">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- XLSX -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- =====================================================
+  🔥 FIREBASE SDK (compat version)
+  ===================================================== -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<!-- =====================================================
+  🔧 FIREBASE CONFIG — firebaseConfig.js 를 수정하세요
+  ===================================================== -->
+<script src="firebaseConfig.js"></script>
+
+<style>
+/* =============================================
+   DESIGN TOKENS
+============================================= */
+:root {
+  --bg:       #f5f6fa;
+  --bg2:      #eceef4;
+  --surface:  #ffffff;
+  --surface2: #f8f9fc;
+  --surface3: #f0f2f7;
+  --border:   #e4e7f0;
+  --border2:  #cdd2e0;
+  --text:     #111827;
+  --text2:    #374151;
+  --text3:    #6b7280;
+  --text4:    #9ca3af;
+  --blue:     #2563eb;
+  --blue2:    #1d4ed8;
+  --blue3:    #3b82f6;
+  --blue-lt:  #eff6ff;
+  --blue-lt2: #dbeafe;
+  --green:    #059669;
+  --green-lt: #ecfdf5;
+  --red:      #dc2626;
+  --red-lt:   #fef2f2;
+  --orange:   #ea580c;
+  --ora-lt:   #fff7ed;
+  --purple:   #7c3aed;
+  --pur-lt:   #f5f3ff;
+  --yellow:   #d97706;
+  --yel-lt:   #fffbeb;
+  --teal:     #0d9488;
+  --teal-lt:  #f0fdfa;
+  --sh-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+  --sh:    0 4px 14px rgba(0,0,0,.07), 0 2px 6px rgba(0,0,0,.04);
+  --sh-md: 0 8px 24px rgba(0,0,0,.09), 0 4px 12px rgba(0,0,0,.05);
+  --sh-lg: 0 16px 40px rgba(0,0,0,.12), 0 8px 20px rgba(0,0,0,.07);
+  --r:  14px;
+  --r2: 8px;
+  --r3: 20px;
+  --t:  .2s cubic-bezier(.4,0,.2,1);
+  --sidebar-w: 230px;
+}
+[data-theme="dark"] {
+  --bg:       #0d1117;
+  --bg2:      #161b22;
+  --surface:  #1c2333;
+  --surface2: #21293a;
+  --surface3: #263044;
+  --border:   #2d3748;
+  --border2:  #3d4f6e;
+  --text:     #f0f4f8;
+  --text2:    #c9d4e0;
+  --text3:    #7a90a8;
+  --text4:    #4a607a;
+  --blue:     #3b82f6;
+  --blue2:    #2563eb;
+  --blue3:    #60a5fa;
+  --blue-lt:  #172554;
+  --blue-lt2: #1e3a8a;
+  --green:    #10b981;
+  --green-lt: #064e3b;
+  --red:      #f87171;
+  --red-lt:   #450a0a;
+  --orange:   #fb923c;
+  --ora-lt:   #431407;
+  --purple:   #a78bfa;
+  --pur-lt:   #2e1065;
+  --yellow:   #fbbf24;
+  --yel-lt:   #451a03;
+  --teal:     #2dd4bf;
+  --teal-lt:  #042f2e;
+  --sh-sm: 0 1px 3px rgba(0,0,0,.4);
+  --sh:    0 4px 14px rgba(0,0,0,.4);
+  --sh-md: 0 8px 24px rgba(0,0,0,.5);
+  --sh-lg: 0 16px 40px rgba(0,0,0,.6);
+}
+
+/* =============================================
+   RESET
+============================================= */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh;transition:background var(--t),color var(--t)}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input,select,textarea{font-family:inherit}
+a{text-decoration:none;color:inherit}
+ul{list-style:none}
+img{max-width:100%}
+
+/* =============================================
+   AUTH SCREEN
+============================================= */
+#authScreen {
+  display:none;
+  min-height:100vh;
+  background: linear-gradient(135deg, #f0f4ff 0%, #fafafa 50%, #f0fff4 100%);
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+[data-theme="dark"] #authScreen {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+}
+#authScreen.visible { display:flex; }
+.auth-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:24px;
+  box-shadow:var(--sh-lg);
+  padding:48px 40px;
+  width:100%;
+  max-width:400px;
+  text-align:center;
+}
+.auth-logo {
+  width:64px;height:64px;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  border-radius:18px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;
+  margin:0 auto 20px;
+  box-shadow:0 8px 24px rgba(37,99,235,.3);
+}
+.auth-title { font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.5px;margin-bottom:6px; }
+.auth-sub { font-size:14px;color:var(--text3);margin-bottom:36px;line-height:1.6; }
+.auth-divider { font-size:12px;color:var(--text4);margin:20px 0;position:relative; }
+.auth-divider::before,.auth-divider::after { content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border); }
+.auth-divider::before{left:0} .auth-divider::after{right:0}
+.btn-google {
+  width:100%;padding:14px;border-radius:12px;
+  border:2px solid var(--border);
+  background:var(--surface);
+  font-size:15px;font-weight:600;color:var(--text);
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all var(--t);
+  box-shadow:var(--sh-sm);
+}
+.btn-google:hover{border-color:var(--blue);box-shadow:var(--sh-md);transform:translateY(-1px)}
+.btn-google img{width:20px;height:20px}
+.auth-note { font-size:11px;color:var(--text4);margin-top:20px;line-height:1.6; }
+
+/* =============================================
+   LOADING SCREEN
+============================================= */
+#loadingScreen {
+  position:fixed;inset:0;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;
+  gap:16px;
+}
+#loadingScreen.hidden{display:none}
+.spinner {
+  width:44px;height:44px;
+  border:3px solid var(--border2);
+  border-top-color:var(--blue);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text3);font-weight:500}
+
+/* =============================================
+   APP LAYOUT
+============================================= */
+#appScreen{display:none}
+#appScreen.visible{display:flex;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{
+  width:var(--sidebar-w);
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;height:100vh;
+  display:flex;flex-direction:column;
+  z-index:100;
+  overflow-y:auto;
+  transition:transform var(--t),background var(--t),border-color var(--t);
+}
+.sidebar-logo{
+  padding:22px 18px 18px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.logo-icon{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;color:#fff;
+  flex-shrink:0;
+}
+.logo-text{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.logo-sub{font-size:10px;color:var(--text4)}
+
+.user-info{
+  padding:14px 18px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.user-avatar{
+  width:34px;height:34px;border-radius:50%;
+  object-fit:cover;border:2px solid var(--border);
+  flex-shrink:0;background:var(--surface3);
+}
+.user-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-email{font-size:11px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.sidebar-nav{flex:1;padding:10px 10px}
+.nav-group-label{
+  font-size:10px;font-weight:700;color:var(--text4);
+  text-transform:uppercase;letter-spacing:1px;
+  padding:10px 10px 4px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 12px;
+  border-radius:var(--r2);
+  font-size:13.5px;font-weight:500;color:var(--text3);
+  cursor:pointer;
+  transition:all var(--t);
+  margin-bottom:1px;
+  user-select:none;
+}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--blue-lt);color:var(--blue);font-weight:700}
+.nav-icon{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.btn-theme,.btn-logout{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 12px;
+  border-radius:var(--r2);
+  font-size:12.5px;font-weight:500;color:var(--text3);
+  cursor:pointer;
+  transition:all var(--t);
+  border:1px solid var(--border);
+  background:var(--surface2);
+  width:100%;
+}
+.btn-theme:hover{border-color:var(--blue);color:var(--blue)}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+
+/* MAIN */
+.main{
+  flex:1;
+  margin-left:var(--sidebar-w);
+  display:flex;flex-direction:column;
+  min-height:100vh;
+}
+.topbar{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+  position:sticky;top:0;z-index:50;
+  transition:background var(--t),border-color var(--t);
+}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.menu-btn{
+  display:none;
+  width:34px;height:34px;
+  border-radius:var(--r2);
+  background:var(--surface2);
+  align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;
+  border:1px solid var(--border);
+  flex-shrink:0;
+}
+.page-title{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.sync-status{
+  display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:500;
+  padding:4px 10px;border-radius:20px;
+}
+.sync-status.synced{background:var(--green-lt);color:var(--green)}
+.sync-status.syncing{background:var(--blue-lt);color:var(--blue)}
+.sync-status.error{background:var(--red-lt);color:var(--red)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.page-area{padding:24px;flex:1}
+
+/* =============================================
+   TABS (section)
+============================================= */
+.tab-section{display:none;animation:fadeUp .2s ease}
+.tab-section.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* =============================================
+   COMPONENTS — Cards
+============================================= */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:var(--sh-sm);
+  transition:background var(--t),border-color var(--t);
+}
+.card-h{padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.card-b{padding:14px 20px 18px}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:17px 18px;
+  position:relative;overflow:hidden;
+  transition:all var(--t);cursor:default;
+}
+.stat-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;
+  height:3px;border-radius:var(--r) var(--r) 0 0;
+}
+.sc-blue::after{background:linear-gradient(90deg,#2563eb,#3b82f6)}
+.sc-green::after{background:linear-gradient(90deg,#059669,#34d399)}
+.sc-red::after{background:linear-gradient(90deg,#dc2626,#f87171)}
+.sc-orange::after{background:linear-gradient(90deg,#ea580c,#fb923c)}
+.sc-purple::after{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.sc-teal::after{background:linear-gradient(90deg,#0d9488,#2dd4bf)}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.stat-ic{position:absolute;top:15px;right:15px;font-size:22px;opacity:.13}
+.stat-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px}
+.stat-val{font-size:21px;font-weight:800;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.sv-blue{color:var(--blue)} .sv-green{color:var(--green)} .sv-red{color:var(--red)}
+.sv-orange{color:var(--orange)} .sv-purple{color:var(--purple)} .sv-teal{color:var(--teal)}
+.stat-sub{font-size:11px;color:var(--text4);margin-top:3px}
+
+/* =============================================
+   SECTION HEADER
+============================================= */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.sec-title{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.4px}
+.sec-sub{font-size:12.5px;color:var(--text4);margin-top:2px}
+.sec-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* =============================================
+   BUTTONS
+============================================= */
+.btn{
+  padding:9px 16px;border-radius:var(--r2);
+  font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:all var(--t);display:inline-flex;align-items:center;gap:6px;
+  white-space:nowrap;
+}
+.btn-primary{background:var(--blue);color:#fff;border:none}
+.btn-primary:hover{background:var(--blue2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.btn-secondary{background:var(--surface2);color:var(--text2);border:1.5px solid var(--border)}
+.btn-secondary:hover{border-color:var(--blue);color:var(--blue)}
+.btn-danger{background:var(--red-lt);color:var(--red);border:1.5px solid transparent}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#fff;border:none}
+.btn-green:hover{filter:brightness(1.08)}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
+.btn-xs{padding:4px 8px;font-size:11px;border-radius:5px}
+
+/* =============================================
+   FORMS
+============================================= */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:11.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.fi,.fs,.fta{
+  padding:9px 13px;
+  background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r2);
+  font-size:13.5px;color:var(--text);width:100%;outline:none;
+  transition:all var(--t);
+}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--blue);background:var(--surface);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.fs{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:32px;cursor:pointer}
+.fta{resize:vertical;min-height:70px}
+.fw{position:relative}
+.fw .fc{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-weight:600;font-size:13.5px;pointer-events:none}
+.fw .fi{padding-left:26px}
+.form-grid{display:grid;gap:12px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+
+/* TYPE TOGGLE */
+.type-tog{display:flex;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r2);padding:3px;gap:3px}
+.tt-btn{flex:1;padding:7px;border-radius:6px;font-size:13px;font-weight:600;color:var(--text3);transition:all var(--t);text-align:center;cursor:pointer;user-select:none}
+.tt-btn.ai{background:var(--blue);color:#fff}
+.tt-btn.ae{background:var(--red);color:#fff}
+
+/* =============================================
+   TABLE
+============================================= */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--surface2)}
+thead th{padding:11px 13px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background var(--t)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+td{padding:11px 13px;color:var(--text2);vertical-align:middle}
+.td-in{color:var(--blue);font-weight:700;font-variant-numeric:tabular-nums}
+.td-ex{color:var(--red);font-weight:700;font-variant-numeric:tabular-nums}
+.td-up{color:var(--green);font-weight:700}
+.td-dn{color:var(--orange);font-weight:700}
+
+/* =============================================
+   BADGES
+============================================= */
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-blue{background:var(--blue-lt);color:var(--blue)}
+.b-green{background:var(--green-lt);color:var(--green)}
+.b-red{background:var(--red-lt);color:var(--red)}
+.b-orange{background:var(--ora-lt);color:var(--orange)}
+.b-purple{background:var(--pur-lt);color:var(--purple)}
+.b-teal{background:var(--teal-lt);color:var(--teal)}
+.b-gray{background:var(--surface3);color:var(--text3)}
+
+/* =============================================
+   FILTER BAR
+============================================= */
+.filter-bar{
+  display:flex;gap:8px;align-items:center;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:10px 14px;
+  margin-bottom:14px;flex-wrap:wrap;
+}
+.si{position:relative;flex:1;min-width:160px}
+.si .sic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text4);font-size:13px;pointer-events:none}
+.search-inp{padding:7px 10px 7px 30px;border:1.5px solid var(--border);border-radius:var(--r2);background:var(--surface2);font-size:13px;color:var(--text);width:100%;outline:none;transition:all var(--t)}
+.search-inp:focus{border-color:var(--blue);background:var(--surface)}
+.fsel{padding:7px 28px 7px 10px;border:1.5px solid var(--border);border-radius:var(--r2);background:var(--surface2);font-size:12.5px;color:var(--text2);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;outline:none;cursor:pointer;transition:all var(--t)}
+.fsel:focus{border-color:var(--blue)}
+
+/* =============================================
+   MODAL
+============================================= */
+.modal-ov{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);
+  z-index:200;display:flex;align-items:center;justify-content:center;
+  padding:20px;opacity:0;pointer-events:none;transition:opacity var(--t);
+}
+.modal-ov.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border-radius:var(--r3);border:1px solid var(--border);
+  box-shadow:var(--sh-lg);width:100%;max-width:540px;max-height:90vh;overflow-y:auto;
+  transform:translateY(20px) scale(.97);transition:transform var(--t);
+}
+.modal-ov.open .modal{transform:translateY(0) scale(1)}
+.modal-hd{padding:18px 22px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:800;color:var(--text)}
+.modal-x{width:30px;height:30px;border-radius:var(--r2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text3);cursor:pointer;transition:all var(--t)}
+.modal-x:hover{background:var(--red-lt);color:var(--red)}
+.modal-bd{padding:18px 22px 22px}
+
+/* =============================================
+   TOAST
+============================================= */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:11px 14px;
+  box-shadow:var(--sh-md);font-size:13px;font-weight:500;color:var(--text);
+  display:flex;align-items:center;gap:9px;min-width:260px;
+  animation:toastIn .2s ease;
+}
+.toast.ok{border-left:3px solid var(--green)}
+.toast.err{border-left:3px solid var(--red)}
+.toast.inf{border-left:3px solid var(--blue)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* =============================================
+   CHARTS
+============================================= */
+.charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.chart-card.wide{grid-column:1/-1}
+.ct{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:3px}
+.cs{font-size:11.5px;color:var(--text4);margin-bottom:14px}
+.ch{position:relative}
+.ch.h200{height:200px}
+.ch.h260{height:260px}
+.ch.h300{height:300px}
+
+/* =============================================
+   INVESTMENT CARDS
+============================================= */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.inv-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--r);padding:16px 18px;
+  transition:all var(--t);
+}
+.inv-card:hover{border-color:var(--blue);box-shadow:var(--sh-md);transform:translateY(-2px)}
+.inv-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.inv-name{font-size:14.5px;font-weight:700;color:var(--text)}
+.inv-meta{font-size:11px;color:var(--text4);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.inv-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.is-lbl{font-size:10.5px;color:var(--text4);font-weight:500;margin-bottom:1px}
+.is-val{font-size:13.5px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.inv-actions{display:flex;gap:4px}
+
+/* INVESTMENT TABS */
+.inv-seg{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.inv-seg-btn{
+  padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:600;
+  background:var(--surface2);border:1.5px solid var(--border);color:var(--text3);
+  cursor:pointer;transition:all var(--t);
+}
+.inv-seg-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* =============================================
+   ASSET ITEMS
+============================================= */
+.asset-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.asset-item{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:var(--r);transition:all var(--t);
+}
+.asset-item:hover{border-color:var(--blue)}
+.a-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.a-inf{flex:1;min-width:0}
+.a-name{font-size:12px;font-weight:600;color:var(--text3)}
+.a-val{font-size:15px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+
+/* SUMMARY BOXES */
+.sum-box{background:var(--surface2);border-radius:var(--r2);padding:13px 15px;display:flex;align-items:center;justify-content:space-between}
+.sum-lbl{font-size:11.5px;color:var(--text4);font-weight:500}
+.sum-val{font-size:17px;font-weight:800;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+
+/* PERIOD PICKER */
+.period-pick{display:flex;align-items:center;gap:6px;background:var(--surface2);border-radius:var(--r2);border:1.5px solid var(--border);padding:5px 10px}
+.period-pick button{background:none;border:none;color:var(--text3);font-size:17px;cursor:pointer;padding:1px 5px;border-radius:4px;transition:all var(--t)}
+.period-pick button:hover{background:var(--surface3);color:var(--text)}
+.period-lbl{font-size:13.5px;font-weight:700;color:var(--text);min-width:80px;text-align:center}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:44px 20px;color:var(--text4)}
+.empty-ic{font-size:44px;margin-bottom:10px;opacity:.5}
+.empty p{font-size:13.5px}
+
+/* DIVIDER */
+.div{height:1px;background:var(--border);margin:16px 0}
+
+/* OVERLAY (mobile) */
+.mob-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99;display:none}
+.mob-ov.active{display:block}
+
+/* TOP5 */
+.top5{display:flex;flex-direction:column;gap:9px}
+.t5-item{display:flex;align-items:center;gap:10px}
+.t5-rank{width:20px;height:20px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--text3);flex-shrink:0}
+.t5-rank.g{background:#fef3c7;color:#d97706} .t5-rank.s{background:#f1f5f9;color:#64748b} .t5-rank.b{background:#fef3c7;color:#b45309}
+.t5-inf{flex:1}
+.t5-name{font-size:12.5px;font-weight:600;color:var(--text)}
+.t5-bar-w{background:var(--surface3);height:4px;border-radius:99px;margin-top:3px}
+.t5-bar{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--red),#f87171)}
+.t5-amt{font-size:12.5px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums}
+
+/* =============================================
+   RESPONSIVE
+============================================= */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);width:260px}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .menu-btn{display:flex}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .charts-grid{grid-template-columns:1fr}
+  .charts-grid .chart-card.wide{grid-column:auto}
+  .page-area{padding:14px}
+  .fg2{grid-template-columns:1fr}
+  .fg3{grid-template-columns:1fr 1fr}
+  .inv-grid{grid-template-columns:1fr}
+  .asset-list{grid-template-columns:1fr 1fr}
+  .auth-card{padding:36px 24px}
+}
+@media(max-width:480px){
+  .stats-row{grid-template-columns:1fr}
+  .asset-list{grid-template-columns:1fr}
+  .fg3{grid-template-columns:1fr}
+  .topbar{padding:0 14px}
+}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--text4)}
+</style>
+</head>
+<body>
+
+<!-- =============================================
+  LOADING
+============================================= -->
+<div id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="loading-text">MoneyFlow 불러오는 중...</div>
+</div>
+
+<!-- =============================================
+  AUTH
+============================================= -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">💰</div>
+    <div class="auth-title">MoneyFlow</div>
+    <div class="auth-sub">스마트 자산관리 앱<br>어디서나 내 자산을 한눈에</div>
+
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Google로 로그인
+    </button>
+
+    <div class="auth-note">로그인하면 모든 데이터가 Firebase에 안전하게 저장되고,<br>어디서나 접속해도 동일한 데이터를 확인할 수 있습니다.</div>
+  </div>
+</div>
+
+<!-- =============================================
+  APP
+============================================= -->
+<div id="appScreen">
+  <div class="mob-ov" id="mobOv" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">💰</div>
+      <div>
+        <div class="logo-text">MoneyFlow</div>
+        <div class="logo-sub">스마트 자산관리</div>
+      </div>
+    </div>
+
+    <div class="user-info">
+      <img class="user-avatar" id="userAvatar" src="" alt="avatar">
+      <div style="min-width:0">
+        <div class="user-name" id="userName">사용자</div>
+        <div class="user-email" id="userEmail">-</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">메인</div>
+      <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard',this)"><span class="nav-icon">🏠</span>대시보드</div>
+      <div class="nav-item" data-tab="income" onclick="switchTab('income',this)"><span class="nav-icon">💰</span>수입 관리</div>
+      <div class="nav-item" data-tab="expense" onclick="switchTab('expense',this)"><span class="nav-icon">🛍️</span>지출 관리</div>
+      <div class="nav-group-label" style="margin-top:6px">투자</div>
+      <div class="nav-item" data-tab="invest" onclick="switchTab('invest',this)"><span class="nav-icon">📈</span>투자 관리</div>
+      <div class="nav-group-label" style="margin-top:6px">분석</div>
+      <div class="nav-item" data-tab="stats" onclick="switchTab('stats',this)"><span class="nav-icon">📊</span>통계</div>
+      <div class="nav-item" data-tab="assets" onclick="switchTab('assets',this)"><span class="nav-icon">🏦</span>자산 관리</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="btn-theme" onclick="toggleTheme()"><span id="themeIc">🌙</span><span id="themeLbl">다크 모드</span></button>
+      <button class="btn-logout" onclick="signOut()">🚪 로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <span class="page-title" id="pageTitle">대시보드</span>
+      </div>
+      <div class="topbar-right">
+        <div class="sync-status synced" id="syncStatus">
+          <div class="sync-dot"></div>
+          <span id="syncLabel">저장됨</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="quickAdd()">+ 추가</button>
+      </div>
+    </header>
+
+    <div class="page-area">
+
+      <!-- ========== DASHBOARD ========== -->
+      <section class="tab-section active" id="tab-dashboard">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">대시보드</div>
+            <div class="sec-sub" id="dashPeriod">이번 달 현황</div>
+          </div>
+          <div class="period-pick">
+            <button onclick="chMonth(-1)">‹</button>
+            <span class="period-lbl" id="dashMonth"></span>
+            <button onclick="chMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="stats-row" id="dashStats"></div>
+        <div class="charts-grid">
+          <div class="chart-card wide">
+            <div class="ct">월별 수입/지출 추이</div>
+            <div class="cs">최근 12개월</div>
+            <div class="ch h260"><canvas id="dashTrendChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="ct">카테고리별 지출</div>
+            <div class="cs" id="dashPiePeriod">이번 달 기준</div>
+            <div class="ch h200"><canvas id="dashExpPie"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="ct">TOP 5 지출 항목</div>
+            <div class="cs" id="dashTop5Period">이번 달 기준</div>
+            <div class="ch h200" style="display:flex;align-items:center;padding:8px 0">
+              <div class="top5" id="dashTop5" style="width:100%"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== INCOME ========== -->
+      <section class="tab-section" id="tab-income">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">수입 관리</div>
+            <div class="sec-sub">수입 내역을 기록하세요</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddTx('income')">+ 수입 추가</button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="si"><span class="sic">🔍</span><input type="text" class="search-inp" id="incSearch" placeholder="메모 검색..." oninput="renderIncome()"></div>
+          <select class="fsel" id="incMonthF" onchange="renderIncome()"></select>
+          <select class="fsel" id="incCatF" onchange="renderIncome()">
+            <option value="">전체 카테고리</option>
+            <option>급여</option><option>부수입</option><option>배당금</option><option>이자</option><option>기타</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px" id="incSummary"></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>날짜</th><th>카테고리</th><th>금액</th><th>메모</th><th>작업</th></tr></thead>
+          <tbody id="incTable"></tbody>
+        </table></div>
+        <div class="empty" id="incEmpty" style="display:none"><div class="empty-ic">💰</div><p>수입 내역이 없습니다</p></div>
+      </section>
+
+      <!-- ========== EXPENSE ========== -->
+      <section class="tab-section" id="tab-expense">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">지출 관리</div>
+            <div class="sec-sub">지출 내역을 기록하세요</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddTx('expense')">+ 지출 추가</button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="si"><span class="sic">🔍</span><input type="text" class="search-inp" id="expSearch" placeholder="메모 검색..." oninput="renderExpense()"></div>
+          <select class="fsel" id="expMonthF" onchange="renderExpense()"></select>
+          <select class="fsel" id="expCatF" onchange="renderExpense()">
+            <option value="">전체 카테고리</option>
+            <option>식사</option><option>커피 &amp; 베이커리</option><option>편의점</option>
+            <option>쇼핑</option><option>백화점</option><option>주유 &amp; 대중교통</option>
+            <option>병원 &amp; 약국</option><option>자기계발</option><option>통신비</option>
+            <option>보험</option><option>문화생활</option><option>여행</option>
+            <option>경조사</option><option>기타</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px" id="expSummary"></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>날짜</th><th>카테고리</th><th>금액</th><th>메모</th><th>작업</th></tr></thead>
+          <tbody id="expTable"></tbody>
+        </table></div>
+        <div class="empty" id="expEmpty" style="display:none"><div class="empty-ic">🛍️</div><p>지출 내역이 없습니다</p></div>
+      </section>
+
+      <!-- ========== INVESTMENTS ========== -->
+      <section class="tab-section" id="tab-invest">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">투자 관리</div>
+            <div class="sec-sub">포트폴리오를 관리하세요</div>
+          </div>
+          <div class="sec-acts">
+            <button class="btn btn-primary btn-sm" onclick="openAddInv()">+ 투자 추가</button>
+          </div>
+        </div>
+
+        <div class="stats-row" id="invStats"></div>
+
+        <div class="inv-seg" id="invSeg">
+          <button class="inv-seg-btn active" data-f="all" onclick="setInvFilter('all')">전체</button>
+          <button class="inv-seg-btn" data-f="국내주식" onclick="setInvFilter('국내주식')">🇰🇷 국내주식</button>
+          <button class="inv-seg-btn" data-f="미국주식" onclick="setInvFilter('미국주식')">🇺🇸 미국주식</button>
+        </div>
+
+        <div class="inv-grid" id="invGrid"></div>
+        <div class="empty" id="invEmpty" style="display:none"><div class="empty-ic">📈</div><p>투자 항목이 없습니다</p></div>
+      </section>
+
+      <!-- ========== STATS ========== -->
+      <section class="tab-section" id="tab-stats">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">통계</div>
+            <div class="sec-sub">재무 현황 분석</div>
+          </div>
+          <div class="period-pick">
+            <button onclick="chStatYear(-1)">‹</button>
+            <span class="period-lbl" id="statYear"></span>
+            <button onclick="chStatYear(1)">›</button>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card wide">
+            <div class="ct">월별 지출 추이</div>
+            <div class="cs" id="statExpLabel"></div>
+            <div class="ch h260"><canvas id="statExpChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="ct">카테고리별 지출</div>
+            <div class="cs" id="statCatLabel"></div>
+            <div class="ch h260"><canvas id="statCatChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="ct">월별 수입 vs 지출</div>
+            <div class="cs" id="statIncExpLabel"></div>
+            <div class="ch h260"><canvas id="statIncExpChart"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== ASSETS ========== -->
+      <section class="tab-section" id="tab-assets">
+        <div class="sec-hd">
+          <div>
+            <div class="sec-title">자산 관리</div>
+            <div class="sec-sub">보유 자산을 입력하고 총 자산을 확인하세요</div>
+          </div>
+        </div>
+
+        <div class="stats-row" id="assetStats"></div>
+
+        <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start">
+          <div>
+            <div class="card">
+              <div class="card-h"><span class="card-title">자산 항목</span></div>
+              <div class="card-b">
+                <div class="asset-list" id="assetList"></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="ct">자산 구성</div>
+            <div class="cs">항목별 비중</div>
+            <div class="ch h260"><canvas id="assetPieChart"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /page-area -->
+  </div><!-- /main -->
+</div><!-- /appScreen -->
+
+<!-- MODAL -->
+<div class="modal-ov" id="modalOv">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-title" id="modalTitle"></span>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-bd" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- HIDDEN FILE INPUT -->
+<input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreData(event)">
+
+<script>
+/* =====================================================
+  FIREBASE INIT
+===================================================== */
+let auth, db;
+try {
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db   = firebase.firestore();
+} catch(e) {
+  console.error('Firebase 초기화 실패:', e);
+  document.getElementById('loadingScreen').innerHTML = `
+    <div style="text-align:center;padding:40px;max-width:480px">
+      <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+      <div style="font-size:16px;font-weight:700;color:#dc2626;margin-bottom:8px">Firebase 설정 오류</div>
+      <div style="font-size:13px;color:#6b7280;line-height:1.7">
+        <code>firebaseConfig.js</code> 파일을 확인해주세요.<br>
+        Firebase 콘솔에서 프로젝트 설정 → 앱 설정 → SDK 구성을 복사하세요.<br><br>
+        자세한 내용은 <code>README.md</code> 를 참조하세요.
+      </div>
+    </div>`;
+}
+
+/* =====================================================
+  STATE
+===================================================== */
+let currentUser = null;
+let appState = {
+  transactions: [],   // { id, type, date, amount, category, memo, createdAt }
+  investments:  [],   // { id, name, ticker, type, country, qty, avgPrice, curPrice, exRate, dividend, memo, createdAt }
+  assets: { cash:0, deposit:0, savings:0, krStock:0, usStock:0, other:0 }
+};
+
+let unsubs = [];           // Firestore unsubscribe fns
+let selectedMonth  = new Date().getMonth();
+let selectedYear   = new Date().getFullYear();
+let selectedStatYear = new Date().getFullYear();
+let invFilter      = 'all';
+let chartInstances = {};
+const COLORS = ['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#14b8a6','#6366f1','#a855f7','#fb923c','#4ade80'];
+
+/* =====================================================
+  AUTH
+===================================================== */
+auth.onAuthStateChanged(user => {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  if (user) {
+    currentUser = user;
+    setupUserUI(user);
+    subscribeFirestore(user.uid);
+    showApp();
+  } else {
+    currentUser = null;
+    unsubAll();
+    showAuth();
+  }
+});
+
+function setupUserUI(user) {
+  const av = document.getElementById('userAvatar');
+  av.src = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName||'U')}&background=2563eb&color=fff`;
+  document.getElementById('userName').textContent  = user.displayName || '사용자';
+  document.getElementById('userEmail').textContent = user.email || '';
+}
+
+async function signInWithGoogle() {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    toast('로그인 실패: ' + e.message, 'err');
+  }
+}
+
+async function signOut() {
+  if(!confirm('로그아웃 하시겠습니까?')) return;
+  await auth.signOut();
+  toast('로그아웃 되었습니다', 'inf');
+}
+
+function showApp()  { document.getElementById('authScreen').classList.remove('visible'); document.getElementById('appScreen').classList.add('visible'); }
+function showAuth() { document.getElementById('appScreen').classList.remove('visible'); document.getElementById('authScreen').classList.add('visible'); }
+
+/* =====================================================
+  FIRESTORE — REALTIME LISTENERS
+===================================================== */
+function subscribeFirestore(uid) {
+  unsubAll();
+  setSyncStatus('syncing', '연결 중...');
+
+  // Transactions
+  const u1 = db.collection('users').doc(uid).collection('transactions')
+    .orderBy('date','desc')
+    .onSnapshot(snap => {
+      appState.transactions = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      refreshCurrentTab();
+      setSyncStatus('synced', '저장됨');
+    }, err => { console.error(err); setSyncStatus('error','오류'); });
+
+  // Investments
+  const u2 = db.collection('users').doc(uid).collection('investments')
+    .orderBy('createdAt','desc')
+    .onSnapshot(snap => {
+      appState.investments = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      if(activeTab()==='invest') renderInvest();
+      if(activeTab()==='assets') renderAssets();
+    }, err => console.error(err));
+
+  // Assets
+  const u3 = db.collection('users').doc(uid).doc ? null : null;
+  const u3x = db.collection('users').doc(uid).collection('meta').doc('assets')
+    .onSnapshot(snap => {
+      if(snap.exists) appState.assets = { ...appState.assets, ...snap.data() };
+      if(activeTab()==='assets') renderAssets();
+      if(activeTab()==='dashboard') renderDashboard();
+    }, err => console.error(err));
+
+  unsubs.push(u1, u2, u3x);
+}
+
+function unsubAll() { unsubs.forEach(fn => fn && fn()); unsubs = []; }
+
+/* =====================================================
+  FIRESTORE — CRUD HELPERS
+===================================================== */
+const txCol  = () => db.collection('users').doc(currentUser.uid).collection('transactions');
+const invCol = () => db.collection('users').doc(currentUser.uid).collection('investments');
+const assetDoc = () => db.collection('users').doc(currentUser.uid).collection('meta').doc('assets');
+
+async function addTx(data) {
+  setSyncStatus('syncing','저장 중...');
+  await txCol().add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+async function updateTx(id, data) {
+  setSyncStatus('syncing','저장 중...');
+  await txCol().doc(id).update(data);
+}
+async function deleteTx(id) {
+  setSyncStatus('syncing','삭제 중...');
+  await txCol().doc(id).delete();
+}
+async function addInv(data) {
+  setSyncStatus('syncing','저장 중...');
+  await invCol().add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+async function updateInv(id, data) {
+  setSyncStatus('syncing','저장 중...');
+  await invCol().doc(id).update(data);
+}
+async function deleteInv(id) {
+  setSyncStatus('syncing','삭제 중...');
+  await invCol().doc(id).delete();
+}
+async function saveAssets(data) {
+  setSyncStatus('syncing','저장 중...');
+  await assetDoc().set(data, { merge:true });
+}
+
+/* =====================================================
+  NAVIGATION
+===================================================== */
+const PAGE_NAMES = { dashboard:'대시보드', income:'수입 관리', expense:'지출 관리', invest:'투자 관리', stats:'통계', assets:'자산 관리' };
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = PAGE_NAMES[tab] || tab;
+  closeSidebar();
+  renderTab(tab);
+}
+
+function activeTab() {
+  const el = document.querySelector('.tab-section.active');
+  return el ? el.id.replace('tab-','') : 'dashboard';
+}
+
+function renderTab(tab) {
+  if(tab==='dashboard') renderDashboard();
+  else if(tab==='income')   renderIncome();
+  else if(tab==='expense')  renderExpense();
+  else if(tab==='invest')   renderInvest();
+  else if(tab==='stats')    renderStats();
+  else if(tab==='assets')   renderAssets();
+}
+
+function refreshCurrentTab() { renderTab(activeTab()); }
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobOv').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobOv').classList.remove('active');
+}
+
+function setSyncStatus(type, label) {
+  const el = document.getElementById('syncStatus');
+  const lb = document.getElementById('syncLabel');
+  el.className = 'sync-status ' + type;
+  lb.textContent = label;
+}
+
+function quickAdd() {
+  const t = activeTab();
+  if(t==='income') openAddTx('income');
+  else if(t==='expense') openAddTx('expense');
+  else if(t==='invest') openAddInv();
+  else openAddTx('expense');
+}
+
+/* =====================================================
+  HELPERS
+===================================================== */
+const W  = n => '₩' + Math.abs(Math.round(n)).toLocaleString('ko-KR');
+const FN = n => n.toLocaleString('ko-KR');
+const FP = n => (isNaN(n)?0:n).toFixed(2) + '%';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+const today = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const pad = n => String(n).padStart(2,'0');
+const mKey = d => `${new Date(d).getFullYear()}-${pad(new Date(d).getMonth()+1)}`;
+
+function toast(msg, type='ok') {
+  const c = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<span>${type==='ok'?'✅':type==='err'?'❌':'ℹ️'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(), 3500);
+}
+
+/* =====================================================
+  CHARTS
+===================================================== */
+function gc() {
+  const dark = document.documentElement.getAttribute('data-theme')==='dark';
+  return {
+    grid: dark?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)',
+    text: dark?'#7a90a8':'#6b7280',
+    bd:   dark?'#2d3748':'#e4e7f0',
+    bg:   dark?'#1c2333':'#fff',
+    body: dark?'#c9d4e0':'#374151',
+  };
+}
+function dChart(id) { if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];} }
+
+function mkChart(id, type, data, opts={}) {
+  dChart(id);
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  const c = gc();
+  const def = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{labels:{color:c.text,font:{family:'Pretendard',size:11},padding:10,boxWidth:10,boxHeight:10}},
+      tooltip:{backgroundColor:c.bg,titleColor:c.body,bodyColor:c.body,borderColor:c.bd,borderWidth:1,padding:9,callbacks:{}}
+    }
+  };
+  if(type==='bar'||type==='line'){
+    def.scales={
+      x:{grid:{color:c.grid},ticks:{color:c.text,font:{family:'Pretendard',size:10.5}},border:{color:c.bd}},
+      y:{grid:{color:c.grid},ticks:{color:c.text,font:{family:'Pretendard',size:10.5},callback:v=>v>=1000000?'₩'+(v/1000000).toFixed(0)+'M':v>=1000?'₩'+(v/1000).toFixed(0)+'K':'₩'+v},border:{color:c.bd}}
+    };
+  }
+  chartInstances[id] = new Chart(ctx, {type, data, options:dMerge(def,opts)});
+}
+function dMerge(t,s){ const r={...t}; for(const k of Object.keys(s)){ if(s[k]&&typeof s[k]==='object'&&!Array.isArray(s[k])) r[k]=dMerge(t[k]||{},s[k]); else r[k]=s[k]; } return r; }
+
+/* =====================================================
+  THEME
+===================================================== */
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme',t);
+  const dk = t==='dark';
+  document.getElementById('themeIc').textContent = dk?'☀️':'🌙';
+  document.getElementById('themeLbl').textContent = dk?'라이트 모드':'다크 모드';
+  refreshCurrentTab();
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark'?'light':'dark';
+  localStorage.setItem('mf_theme', next);
+  applyTheme(next);
+}
+// Load theme
+const savedTheme = localStorage.getItem('mf_theme') || 'light';
+applyTheme(savedTheme);
+
+/* =====================================================
+  DASHBOARD
+===================================================== */
+function chMonth(d) {
+  selectedMonth += d;
+  if(selectedMonth<0){selectedMonth=11;selectedYear--;}
+  if(selectedMonth>11){selectedMonth=0;selectedYear++;}
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const mk = `${selectedYear}-${pad(selectedMonth+1)}`;
+  document.getElementById('dashMonth').textContent = `${selectedYear}년 ${selectedMonth+1}월`;
+  document.getElementById('dashPiePeriod').textContent = `${selectedYear}년 ${selectedMonth+1}월 기준`;
+  document.getElementById('dashTop5Period').textContent = `${selectedYear}년 ${selectedMonth+1}월 기준`;
+
+  const txs = appState.transactions;
+  const mTxs = txs.filter(t=>mKey(t.date)===mk);
+  const inc  = mTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp  = mTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const sav  = inc - exp;
+
+  const invVal = appState.investments.reduce((s,i)=>{
+    const v = i.curPrice * i.qty * (i.country==='미국'?(i.exRate||1):1);
+    return s+v;
+  },0);
+  const invPrin = appState.investments.reduce((s,i)=>s+i.principal,0);
+
+  const assetSum = Object.values(appState.assets).reduce((s,v)=>s+v,0);
+  const totalAsset = assetSum + invVal;
+
+  document.getElementById('dashStats').innerHTML = [
+    {l:'이번 달 수입',    v:W(inc),        c:'sc-blue',  vc:'sv-blue',   ic:'💰'},
+    {l:'이번 달 지출',    v:W(exp),        c:'sc-red',   vc:'sv-red',    ic:'🛍️'},
+    {l:'순저축',          v:W(sav),        c:sav>=0?'sc-green':'sc-orange', vc:sav>=0?'sv-green':'sv-orange', ic:'💾'},
+    {l:'투자 금액',       v:W(invPrin),    c:'sc-purple', vc:'sv-purple', ic:'📈'},
+    {l:'총 자산',         v:W(totalAsset), c:'sc-teal',   vc:'sv-teal',  ic:'🏦'},
+  ].map(s=>`
+    <div class="stat-card ${s.c}">
+      <span class="stat-ic">${s.ic}</span>
+      <div class="stat-label">${s.l}</div>
+      <div class="stat-val ${s.vc}">${s.v}</div>
+    </div>`).join('');
+
+  // Trend chart
+  const months=[],incs=[],exps=[];
+  for(let i=11;i>=0;i--){
+    const d = new Date(selectedYear, selectedMonth-i, 1);
+    const k = `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+    months.push(`${d.getMonth()+1}월`);
+    const mt = txs.filter(t=>mKey(t.date)===k);
+    incs.push(mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0));
+    exps.push(mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));
+  }
+  mkChart('dashTrendChart','bar',{labels:months,datasets:[
+    {label:'수입',data:incs,backgroundColor:'rgba(37,99,235,.8)',borderRadius:5,borderSkipped:false},
+    {label:'지출',data:exps,backgroundColor:'rgba(220,38,38,.7)',borderRadius:5,borderSkipped:false},
+  ]},{plugins:{legend:{position:'top'}}});
+
+  // Expense pie
+  const cats={};
+  mTxs.filter(t=>t.type==='expense').forEach(t=>{ cats[t.category]=(cats[t.category]||0)+t.amount; });
+  const ce = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if(ce.length>0){
+    mkChart('dashExpPie','doughnut',{labels:ce.map(e=>e[0]),datasets:[{data:ce.map(e=>e[1]),backgroundColor:COLORS,borderWidth:2,hoverOffset:6}]},{
+      plugins:{legend:{position:'bottom',labels:{font:{size:10.5}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${W(ctx.raw)}`}}}
+    });
+  } else { dChart('dashExpPie'); }
+
+  // TOP5
+  const sorted = ce.slice(0,5);
+  const max = sorted[0]?.[1]||1;
+  const ranks=['g','s','b','',''];
+  document.getElementById('dashTop5').innerHTML = sorted.length?sorted.map(([cat,amt],i)=>`
+    <div class="t5-item">
+      <div class="t5-rank ${ranks[i]}">${i+1}</div>
+      <div class="t5-inf">
+        <div class="t5-name">${cat}</div>
+        <div class="t5-bar-w"><div class="t5-bar" style="width:${(amt/max*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="t5-amt">${W(amt)}</div>
+    </div>`).join(''):'<div style="color:var(--text4);font-size:13px;text-align:center;padding:20px">지출 데이터 없음</div>';
+}
+
+/* =====================================================
+  INCOME / EXPENSE RENDER
+===================================================== */
+function populateMonthFilter(selId, curVal) {
+  const sel = document.getElementById(selId); if(!sel) return;
+  const months = [...new Set(appState.transactions.map(t=>mKey(t.date)))].sort().reverse();
+  sel.innerHTML = '<option value="">전체 월</option>' + months.map(m=>`<option value="${m}" ${m===curVal?'selected':''}>${m.replace('-','년 ')}월</option>`).join('');
+}
+
+function renderIncome() {
+  const mf = document.getElementById('incMonthF'); const cur = mf?.value||'';
+  populateMonthFilter('incMonthF', cur);
+  const search = document.getElementById('incSearch')?.value?.toLowerCase()||'';
+  const catF   = document.getElementById('incCatF')?.value||'';
+  const mF     = document.getElementById('incMonthF')?.value||'';
+
+  let txs = appState.transactions.filter(t=>t.type==='income');
+  if(search) txs=txs.filter(t=>(t.memo||'').toLowerCase().includes(search)||(t.category||'').toLowerCase().includes(search));
+  if(catF) txs=txs.filter(t=>t.category===catF);
+  if(mF)   txs=txs.filter(t=>mKey(t.date)===mF);
+  txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const total = txs.reduce((s,t)=>s+t.amount,0);
+  const avgM  = (() => { const ms=[...new Set(txs.map(t=>mKey(t.date)))]; return ms.length?total/ms.length:0; })();
+
+  document.getElementById('incSummary').innerHTML = `
+    <div class="sum-box"><div><div class="sum-lbl">총 수입</div><div class="sum-val" style="color:var(--blue)">${W(total)}</div></div></div>
+    <div class="sum-box"><div><div class="sum-lbl">건수</div><div class="sum-val">${FN(txs.length)}건</div></div></div>
+    <div class="sum-box"><div><div class="sum-lbl">월 평균</div><div class="sum-val" style="color:var(--green)">${W(avgM)}</div></div></div>`;
+
+  const tbody = document.getElementById('incTable');
+  const empty = document.getElementById('incEmpty');
+  if(!txs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = txs.map(t=>`
+    <tr>
+      <td>${t.date}</td>
+      <td><span class="badge b-blue">${t.category}</span></td>
+      <td class="td-in">+${W(t.amount)}</td>
+      <td style="color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.memo||'-'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-xs" onclick="openEditTx('${t.id}')">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="doDeleteTx('${t.id}')">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function renderExpense() {
+  const mf = document.getElementById('expMonthF'); const cur = mf?.value||'';
+  populateMonthFilter('expMonthF', cur);
+  const search = document.getElementById('expSearch')?.value?.toLowerCase()||'';
+  const catF   = document.getElementById('expCatF')?.value||'';
+  const mF     = document.getElementById('expMonthF')?.value||'';
+
+  let txs = appState.transactions.filter(t=>t.type==='expense');
+  if(search) txs=txs.filter(t=>(t.memo||'').toLowerCase().includes(search)||(t.category||'').toLowerCase().includes(search));
+  if(catF)  txs=txs.filter(t=>t.category===catF);
+  if(mF)    txs=txs.filter(t=>mKey(t.date)===mF);
+  txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const total = txs.reduce((s,t)=>s+t.amount,0);
+  const avgM  = (() => { const ms=[...new Set(txs.map(t=>mKey(t.date)))]; return ms.length?total/ms.length:0; })();
+
+  document.getElementById('expSummary').innerHTML = `
+    <div class="sum-box"><div><div class="sum-lbl">총 지출</div><div class="sum-val" style="color:var(--red)">${W(total)}</div></div></div>
+    <div class="sum-box"><div><div class="sum-lbl">건수</div><div class="sum-val">${FN(txs.length)}건</div></div></div>
+    <div class="sum-box"><div><div class="sum-lbl">월 평균</div><div class="sum-val" style="color:var(--orange)">${W(avgM)}</div></div></div>`;
+
+  const tbody = document.getElementById('expTable');
+  const empty = document.getElementById('expEmpty');
+  if(!txs.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = txs.map(t=>`
+    <tr>
+      <td>${t.date}</td>
+      <td><span class="badge b-red">${t.category}</span></td>
+      <td class="td-ex">-${W(t.amount)}</td>
+      <td style="color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.memo||'-'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-xs" onclick="openEditTx('${t.id}')">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="doDeleteTx('${t.id}')">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+/* =====================================================
+  TRANSACTION MODAL
+===================================================== */
+function openAddTx(type) {
+  openModal(type==='income'?'수입 추가':'지출 추가', buildTxForm(null, {type}));
+}
+function openEditTx(id) {
+  const tx = appState.transactions.find(t=>t.id===id); if(!tx) return;
+  openModal('거래 수정', buildTxForm(id, tx));
+}
+
+const INC_CATS = ['급여','부수입','배당금','이자','기타'];
+const EXP_CATS = ['식사','커피 & 베이커리','편의점','쇼핑','백화점','주유 & 대중교통','병원 & 약국','자기계발','통신비','보험','문화생활','여행','경조사','기타'];
+
+function buildTxForm(editId, data={}) {
+  const type = data.type||'expense';
+  const io = INC_CATS.map(c=>`<option value="${c}" ${data.category===c?'selected':''}>${c}</option>`).join('');
+  const eo = EXP_CATS.map(c=>`<option value="${c}" ${data.category===c?'selected':''}>${c}</option>`).join('');
+  return `
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="fg">
+      <label class="fl">구분</label>
+      <div class="type-tog">
+        <div class="tt-btn ${type==='income'?'ai':''}" id="ttInc" onclick="setTT('income')">💰 수입</div>
+        <div class="tt-btn ${type==='expense'?'ae':''}" id="ttExp" onclick="setTT('expense')">🛍️ 지출</div>
+      </div>
+      <input type="hidden" id="fType" value="${type}">
+    </div>
+    <div class="form-grid fg2">
+      <div class="fg"><label class="fl">날짜</label><input type="date" class="fi" id="fDate" value="${data.date||today()}"></div>
+      <div class="fg"><label class="fl">금액</label><div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="fAmt" placeholder="0" value="${data.amount||''}" min="0"></div></div>
+    </div>
+    <div class="fg">
+      <label class="fl">카테고리</label>
+      <select class="fs" id="fCat">
+        <optgroup label="수입" id="fOptI" ${type==='expense'?'style="display:none"':''}>${io}</optgroup>
+        <optgroup label="지출" id="fOptE" ${type==='income'?'style="display:none"':''}>${eo}</optgroup>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="fMemo" placeholder="메모 (선택)" value="${data.memo||''}"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveTx('${editId||''}')">💾 저장</button>
+    </div>
+  </div>`;
+}
+
+window.setTT = function(type) {
+  document.getElementById('fType').value = type;
+  document.getElementById('ttInc').className = 'tt-btn' + (type==='income'?' ai':'');
+  document.getElementById('ttExp').className = 'tt-btn' + (type==='expense'?' ae':'');
+  document.getElementById('fOptI').style.display = type==='expense'?'none':'';
+  document.getElementById('fOptE').style.display = type==='income'?'none':'';
+};
+
+window.saveTx = async function(editId) {
+  const type     = document.getElementById('fType').value;
+  const date     = document.getElementById('fDate').value;
+  const amount   = parseFloat(document.getElementById('fAmt').value);
+  const category = document.getElementById('fCat').value;
+  const memo     = document.getElementById('fMemo').value.trim();
+  if(!date||!amount||amount<=0){toast('날짜와 금액을 입력해주세요','err');return;}
+  try {
+    if(editId) { await updateTx(editId,{type,date,amount,category,memo}); toast('수정되었습니다'); }
+    else       { await addTx({type,date,amount,category,memo}); toast('추가되었습니다'); }
+    closeModal();
+  } catch(e){ toast('저장 실패: '+e.message,'err'); }
+};
+
+window.doDeleteTx = async function(id) {
+  if(!confirm('삭제하시겠습니까?')) return;
+  try { await deleteTx(id); toast('삭제되었습니다'); }
+  catch(e){ toast('삭제 실패: '+e.message,'err'); }
+};
+
+/* =====================================================
+  INVESTMENTS
+===================================================== */
+function setInvFilter(f) {
+  invFilter = f;
+  document.querySelectorAll('.inv-seg-btn').forEach(b=>{b.classList.toggle('active',b.dataset.f===f);});
+  renderInvest();
+}
+
+function renderInvest() {
+  const invs = appState.investments;
+  const totalPrin = invs.reduce((s,i)=>s+i.principal,0);
+  const totalVal  = invs.reduce((s,i)=>s+(i.curPrice*i.qty*(i.country==='미국'?(i.exRate||1):1)),0);
+  const totalDiv  = invs.reduce((s,i)=>s+(i.dividend||0),0);
+  const totalRet  = totalPrin>0?(totalVal-totalPrin)/totalPrin*100:0;
+
+  document.getElementById('invStats').innerHTML = [
+    {l:'총 투자원금', v:W(totalPrin),       c:'sc-blue',  vc:'sv-blue',   ic:'💵'},
+    {l:'총 평가금액', v:W(totalVal),         c:'sc-purple', vc:'sv-purple', ic:'💎'},
+    {l:'총 손익',     v:W(totalVal-totalPrin), c:totalVal>=totalPrin?'sc-green':'sc-orange', vc:totalVal>=totalPrin?'sv-green':'sv-orange', ic:totalVal>=totalPrin?'📈':'📉'},
+    {l:'총 수익률',   v:FP(totalRet),        c:totalRet>=0?'sc-green':'sc-orange', vc:totalRet>=0?'sv-green':'sv-orange', ic:'🎯'},
+    {l:'누적 배당금', v:W(totalDiv),          c:'sc-teal',  vc:'sv-teal',   ic:'💸'},
+  ].map(s=>`
+    <div class="stat-card ${s.c}">
+      <span class="stat-ic">${s.ic}</span>
+      <div class="stat-label">${s.l}</div>
+      <div class="stat-val ${s.vc}">${s.v}</div>
+    </div>`).join('');
+
+  let filtered = invFilter==='all' ? invs : invs.filter(i=>i.invType===invFilter);
+  const grid  = document.getElementById('invGrid');
+  const empty = document.getElementById('invEmpty');
+
+  if(!filtered.length){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  grid.innerHTML = filtered.map(i=>{
+    const val  = i.curPrice * i.qty * (i.country==='미국'?(i.exRate||1):1);
+    const prof = val - i.principal;
+    const ret  = i.principal>0?prof/i.principal*100:0;
+    const divY = i.principal>0?(i.dividend||0)/i.principal*100:0;
+    const up   = prof >= 0;
+    return `
+    <div class="inv-card">
+      <div class="inv-top">
+        <div>
+          <div class="inv-name">${i.country==='미국'?'🇺🇸 ':i.country==='국내'?'🇰🇷 ':''}${i.name}${i.ticker?` <span style="font-size:11px;color:var(--text4);font-family:'JetBrains Mono',monospace">${i.ticker}</span>`:''}</div>
+          <div class="inv-meta">${i.invType} · 매수 ${W(i.avgPrice)}</div>
+        </div>
+        <div class="inv-actions">
+          <button class="btn btn-secondary btn-xs" onclick="openEditInv('${i.id}')">✏️</button>
+          <button class="btn btn-danger btn-xs" onclick="doDeleteInv('${i.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="inv-stats">
+        <div><div class="is-lbl">투자원금</div><div class="is-val">${W(i.principal)}</div></div>
+        <div><div class="is-lbl">평가금액</div><div class="is-val">${W(val)}</div></div>
+        <div><div class="is-lbl">평가손익</div><div class="is-val" style="color:${up?'var(--green)':'var(--orange)'}">${up?'+':''}${W(prof)}</div></div>
+        <div><div class="is-lbl">수익률</div><div class="is-val" style="color:${up?'var(--green)':'var(--orange)'}">${up?'+':''}${FP(ret)}</div></div>
+        <div><div class="is-lbl">보유수량</div><div class="is-val">${FN(i.qty)}주</div></div>
+        <div><div class="is-lbl">배당수익률</div><div class="is-val" style="color:var(--yellow)">${FP(divY)}</div></div>
+        ${i.country==='미국'?`<div><div class="is-lbl">환율</div><div class="is-val">₩${FN(i.exRate||0)}</div></div>`:''}
+        <div><div class="is-lbl">누적배당금</div><div class="is-val" style="color:var(--teal)">${W(i.dividend||0)}</div></div>
+      </div>
+      ${i.memo?`<div style="margin-top:10px;font-size:11.5px;color:var(--text4);padding-top:10px;border-top:1px solid var(--border)">${i.memo}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openAddInv() { openModal('투자 추가', buildInvForm()); }
+window.openEditInv = function(id) {
+  const inv = appState.investments.find(i=>i.id===id); if(!inv) return;
+  openModal('투자 수정', buildInvForm(id, inv));
+};
+
+const INV_TYPES = ['국내주식','미국주식','ETF','리츠(REITs)','채권','예금','적금','금','가상자산','기타'];
+function buildInvForm(editId, d={}) {
+  const isCnt = d.country||'국내';
+  return `
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="form-grid fg2">
+      <div class="fg"><label class="fl">종목명 *</label><input type="text" class="fi" id="iName" placeholder="삼성전자" value="${d.name||''}"></div>
+      <div class="fg"><label class="fl">티커/코드</label><input type="text" class="fi" id="iTicker" placeholder="005930 / AAPL" value="${d.ticker||''}"></div>
+      <div class="fg"><label class="fl">투자 구분</label>
+        <select class="fs" id="iType">${INV_TYPES.map(t=>`<option value="${t}" ${d.invType===t?'selected':''}>${t}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label class="fl">국가</label>
+        <select class="fs" id="iCountry" onchange="toggleExRate()">
+          ${['국내','미국','기타'].map(c=>`<option value="${c}" ${isCnt===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">보유수량</label><input type="number" class="fi" id="iQty" placeholder="0" value="${d.qty||0}" min="0" step="0.001"></div>
+      <div class="fg"><label class="fl">평균매수가</label><div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="iAvgP" placeholder="0" value="${d.avgPrice||0}" min="0"></div></div>
+      <div class="fg"><label class="fl">현재가</label><div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="iCurP" placeholder="0" value="${d.curPrice||0}" min="0"></div></div>
+      <div class="fg"><label class="fl">투자원금</label><div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="iPrin" placeholder="0" value="${d.principal||0}" min="0"></div></div>
+      <div class="fg" id="exRateRow" style="${isCnt!=='미국'?'display:none':''}">
+        <label class="fl">환율 (원/달러)</label><input type="number" class="fi" id="iExRate" placeholder="1350" value="${d.exRate||1350}" min="0">
+      </div>
+      <div class="fg"><label class="fl">누적 배당금</label><div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="iDiv" placeholder="0" value="${d.dividend||0}" min="0"></div></div>
+    </div>
+    <div class="fg"><label class="fl">메모</label><input type="text" class="fi" id="iMemo" placeholder="메모 (선택)" value="${d.memo||''}"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveInv('${editId||''}')">💾 저장</button>
+    </div>
+  </div>`;
+}
+
+window.toggleExRate = function() {
+  const c = document.getElementById('iCountry').value;
+  document.getElementById('exRateRow').style.display = c==='미국'?'':'none';
+};
+
+window.saveInv = async function(editId) {
+  const name = document.getElementById('iName').value.trim();
+  if(!name){ toast('종목명을 입력해주세요','err'); return; }
+  const inv = {
+    name, ticker:document.getElementById('iTicker').value.trim(),
+    invType:document.getElementById('iType').value,
+    country:document.getElementById('iCountry').value,
+    qty:parseFloat(document.getElementById('iQty').value)||0,
+    avgPrice:parseFloat(document.getElementById('iAvgP').value)||0,
+    curPrice:parseFloat(document.getElementById('iCurP').value)||0,
+    principal:parseFloat(document.getElementById('iPrin').value)||0,
+    exRate:parseFloat(document.getElementById('iExRate').value)||1350,
+    dividend:parseFloat(document.getElementById('iDiv').value)||0,
+    memo:document.getElementById('iMemo').value.trim(),
+  };
+  try {
+    if(editId){ await updateInv(editId,inv); toast('수정되었습니다'); }
+    else      { await addInv(inv); toast('투자 항목이 추가되었습니다'); }
+    closeModal();
+  } catch(e){ toast('저장 실패: '+e.message,'err'); }
+};
+
+window.doDeleteInv = async function(id) {
+  if(!confirm('이 투자 항목을 삭제하시겠습니까?')) return;
+  try { await deleteInv(id); toast('삭제되었습니다'); }
+  catch(e){ toast('삭제 실패: '+e.message,'err'); }
+};
+
+/* =====================================================
+  STATS
+===================================================== */
+function chStatYear(d) { selectedStatYear+=d; renderStats(); }
+
+function renderStats() {
+  const y = selectedStatYear;
+  document.getElementById('statYear').textContent = y+'년';
+  document.getElementById('statExpLabel').textContent  = y+'년 월별 지출';
+  document.getElementById('statCatLabel').textContent  = y+'년 카테고리별 지출';
+  document.getElementById('statIncExpLabel').textContent = y+'년 수입 vs 지출';
+
+  const yTxs = appState.transactions.filter(t=>new Date(t.date).getFullYear()===y);
+  const ml = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const mInc=Array(12).fill(0), mExp=Array(12).fill(0);
+  yTxs.forEach(t=>{ const m=new Date(t.date).getMonth(); if(t.type==='income') mInc[m]+=t.amount; else mExp[m]+=t.amount; });
+
+  // Monthly expense
+  mkChart('statExpChart','bar',{labels:ml,datasets:[{label:'지출',data:mExp,backgroundColor:'rgba(220,38,38,.75)',borderRadius:5,borderSkipped:false}]},{plugins:{legend:{display:false}}});
+
+  // Category pie
+  const cats={};
+  yTxs.filter(t=>t.type==='expense').forEach(t=>{ cats[t.category]=(cats[t.category]||0)+t.amount; });
+  const ce = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(ce.length){
+    mkChart('statCatChart','doughnut',{labels:ce.map(e=>e[0]),datasets:[{data:ce.map(e=>e[1]),backgroundColor:COLORS,borderWidth:2,hoverOffset:6}]},{
+      plugins:{legend:{position:'bottom',labels:{font:{size:10}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${W(ctx.raw)}`}}}
+    });
+  } else dChart('statCatChart');
+
+  // Inc vs Exp line
+  mkChart('statIncExpChart','line',{labels:ml,datasets:[
+    {label:'수입',data:mInc,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointRadius:3},
+    {label:'지출',data:mExp,borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.4,pointRadius:3},
+  ]},{plugins:{legend:{position:'top'}}});
+}
+
+/* =====================================================
+  ASSETS
+===================================================== */
+const ASSET_DEFS = [
+  {key:'cash',    label:'현금',     color:'#2563eb'},
+  {key:'deposit', label:'예금',     color:'#10b981'},
+  {key:'savings', label:'적금',     color:'#059669'},
+  {key:'krStock', label:'국내주식', color:'#7c3aed'},
+  {key:'usStock', label:'미국주식', color:'#a78bfa'},
+  {key:'other',   label:'기타',     color:'#6b7280'},
+];
+
+function renderAssets() {
+  const a = appState.assets;
+  const invVal = appState.investments.reduce((s,i)=>s+(i.curPrice*i.qty*(i.country==='미국'?(i.exRate||1):1)),0);
+  const manualSum = ASSET_DEFS.reduce((s,d)=>s+(a[d.key]||0),0);
+  const total = manualSum + invVal;
+
+  document.getElementById('assetStats').innerHTML = [
+    {l:'총 자산',    v:W(total),     c:'sc-blue',  vc:'sv-blue',   ic:'🏦'},
+    {l:'현금성 자산',v:W((a.cash||0)+(a.deposit||0)+(a.savings||0)), c:'sc-green', vc:'sv-green', ic:'💵'},
+    {l:'투자 자산',  v:W(invVal),    c:'sc-purple', vc:'sv-purple', ic:'📈', sub:`수동 입력 포함: ${W(manualSum+(a.krStock||0)+(a.usStock||0))}`},
+    {l:'기타 자산',  v:W(a.other||0),c:'sc-teal',  vc:'sv-teal',   ic:'🔮'},
+  ].map(s=>`
+    <div class="stat-card ${s.c}">
+      <span class="stat-ic">${s.ic}</span>
+      <div class="stat-label">${s.l}</div>
+      <div class="stat-val ${s.vc}">${s.v}</div>
+      ${s.sub?`<div class="stat-sub">${s.sub}</div>`:''}
+    </div>`).join('');
+
+  document.getElementById('assetList').innerHTML = ASSET_DEFS.map(d=>`
+    <div class="asset-item">
+      <div class="a-dot" style="background:${d.color}"></div>
+      <div class="a-inf">
+        <div class="a-name">${d.label}</div>
+        <div class="a-val">${W(a[d.key]||0)}</div>
+      </div>
+      <button class="btn btn-secondary btn-xs" onclick="editAsset('${d.key}','${d.label}',${a[d.key]||0})">수정</button>
+    </div>`).join('');
+
+  // Pie
+  const allItems = [
+    ...ASSET_DEFS.map(d=>({label:d.label, val:a[d.key]||0, color:d.color})),
+    {label:'투자(자동)',val:invVal,color:'#f59e0b'}
+  ].filter(i=>i.val>0);
+
+  if(allItems.length){
+    mkChart('assetPieChart','doughnut',{
+      labels:allItems.map(i=>i.label),
+      datasets:[{data:allItems.map(i=>i.val),backgroundColor:allItems.map(i=>i.color),borderWidth:2,hoverOffset:6}]
+    },{
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10.5}}},
+        tooltip:{callbacks:{label:ctx=>{const total2=allItems.reduce((s,i)=>s+i.val,0);return ` ${ctx.label}: ${W(ctx.raw)} (${(ctx.raw/total2*100).toFixed(1)}%)`;}}}
+      }
+    });
+  }
+}
+
+window.editAsset = function(key, label, cur) {
+  openModal(`${label} 수정`, `
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="fg"><label class="fl">${label} 금액</label>
+      <div class="fw"><span class="fc">₩</span><input type="number" class="fi" id="aVal" value="${cur}" min="0" placeholder="0"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="doSaveAsset('${key}')">저장</button>
+    </div>
+  </div>`);
+};
+
+window.doSaveAsset = async function(key) {
+  const val = parseFloat(document.getElementById('aVal').value)||0;
+  try {
+    appState.assets[key] = val;
+    await saveAssets(appState.assets);
+    closeModal(); toast('자산이 업데이트되었습니다');
+    renderAssets();
+  } catch(e){ toast('저장 실패: '+e.message,'err'); }
+};
+
+/* =====================================================
+  MODAL
+===================================================== */
+function openModal(title, body) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalOv').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOv').classList.remove('open'); }
+document.getElementById('modalOv').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+
+/* =====================================================
+  EXPORT (backup)
+===================================================== */
+function backupData() {
+  const data = { transactions:appState.transactions, investments:appState.investments, assets:appState.assets, exportedAt:new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href=url; a.download=`moneyflow_${today()}.json`; a.click();
+  URL.revokeObjectURL(url); toast('백업 완료');
+}
+
+async function restoreData(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if(!confirm('현재 데이터를 덮어씁니다. 계속하시겠습니까?')) return;
+      toast('복원 중...','inf');
+      const batch = db.batch();
+      const uid = currentUser.uid;
+      d.transactions?.forEach(t=>{ const {id,...rest}=t; batch.set(txCol().doc(id||uid()),rest); });
+      d.investments?.forEach(i=>{ const {id,...rest}=i; batch.set(invCol().doc(id||uid()),rest); });
+      await batch.commit();
+      if(d.assets) await saveAssets(d.assets);
+      toast('복원 완료');
+    } catch(err){ toast('복원 실패: '+err.message,'err'); }
+  };
+  reader.readAsText(file,'UTF-8');
+  e.target.value='';
+}
+</script>
+</body>
+</html>
