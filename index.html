@@ -1479,16 +1479,59 @@ let xlRawFile      = null; // 원본 파일
 -------------------------------------------------- */
 function norm(s){ return String(s||'').trim().replace(/\s+/g,'').toLowerCase(); }
 function normDate(v){
-  if(!v) return null;
-  const s = String(v).trim().replace(/\./g,'-').replace(/\//g,'-');
-  // YYYY-MM-DD
-  if(/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) return s.substring(0,10);
-  // YYYYMMDD
-  if(/^\d{8}$/.test(s.replace(/-/g,''))) { const r=s.replace(/-/g,''); return `${r.slice(0,4)}-${r.slice(4,6)}-${r.slice(6,8)}`; }
-  // Excel 날짜 숫자
-  if(/^\d{5}$/.test(String(v))){ try{ const d=XLSX.SSF.parse_date_code(parseInt(v)); return `${d.y}-${pad(d.m)}-${pad(d.d)}`; }catch(e){} }
-  // 엑셀 날짜 변환 시도
-  if(typeof v === 'number'){ try{ const d=new Date(Math.round((v - 25569)*86400*1000)); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }catch(e){} }
+  /* 날짜 자동 변환 — 6가지 형식 모두 처리
+     1) JS Date 객체 (cellDates:true 일 때)
+     2) 엑셀 시리얼 번호 (숫자)
+     3) YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD
+     4) YYYYMMDD
+     5) MM/DD/YYYY (미국식)
+     6) 일반 문자열 파싱 */
+  if(v === null || v === undefined || v === '') return null;
+
+  // ① JS Date 객체
+  if(v instanceof Date){
+    if(isNaN(v.getTime())) return null;
+    const y=v.getFullYear(), m=v.getMonth()+1, d=v.getDate();
+    if(y<1990||y>2100) return null;
+    return `${y}-${pad(m)}-${pad(d)}`;
+  }
+
+  // ② 숫자 (엑셀 시리얼 번호)
+  if(typeof v === 'number'){
+    if(v < 1) return null;
+    // 1900-01-01 = 1 기준 엑셀 시리얼
+    try{
+      const epoch = Math.round((v - 25569) * 86400 * 1000);
+      const dt = new Date(epoch);
+      const y=dt.getUTCFullYear(), m=dt.getUTCMonth()+1, d=dt.getUTCDate();
+      if(y>=1990&&y<=2100) return `${y}-${pad(m)}-${pad(d)}`;
+    }catch(e){}
+    return null;
+  }
+
+  const s = String(v).trim();
+  if(!s) return null;
+
+  // ③ YYYY-MM-DD / YYYY.MM.DD / YYYY/MM/DD 계열
+  const m1 = s.replace(/[./]/g,'-').match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m1) return `${m1[1]}-${pad(parseInt(m1[2]))}-${pad(parseInt(m1[3]))}`;
+
+  // ④ YYYYMMDD
+  if(/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+
+  // ⑤ MM/DD/YYYY 또는 M/D/YYYY (미국식)
+  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m2) return `${m2[3]}-${pad(parseInt(m2[1]))}-${pad(parseInt(m2[2]))}`;
+
+  // ⑥ 문자열 일반 파싱
+  try{
+    const dt = new Date(s);
+    if(!isNaN(dt.getTime())){
+      const y=dt.getFullYear();
+      if(y>=1990&&y<=2100) return `${y}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+    }
+  }catch(e){}
+
   return null;
 }
 function normAmt(v){
@@ -1577,7 +1620,7 @@ async function xlParseFile(){
   if(!xlRawFile){ toast('파일을 먼저 선택해주세요','err'); return; }
   try{
     const buf = await xlRawFile.arrayBuffer();
-    const wb  = XLSX.read(buf, {type:'array', cellDates:false, raw:false});
+    const wb  = XLSX.read(buf, {type:'array', cellDates:true, raw:false});
     const ws  = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
     if(raw.length < 2){ toast('데이터가 없습니다','err'); return; }
