@@ -379,6 +379,30 @@ td{padding:10px 12px;color:var(--text2);vertical-align:middle}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text4)}
+
+/* ========== EXCEL UPLOAD ========== */
+.xl-drop-zone{
+  border:2px dashed var(--border2);border-radius:var(--r);
+  padding:36px 24px;text-align:center;cursor:pointer;
+  transition:all var(--t);background:var(--surface2);
+  user-select:none;
+}
+.xl-drop-zone:hover,.xl-drop-zone.drag-over{
+  border-color:var(--blue);background:var(--blue-lt);
+}
+.xl-drop-icon{font-size:36px;margin-bottom:10px;opacity:.6}
+.xl-drop-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:5px}
+.xl-drop-sub{font-size:12px;color:var(--text4)}
+.xl-file-name{font-size:12.5px;color:var(--blue);font-weight:600;margin-top:8px}
+.xl-row-ok td{background:transparent}
+.xl-row-err td{background:rgba(220,38,38,.06)}
+.xl-row-dup td{background:rgba(217,119,6,.06)}
+.xl-err-msg{font-size:10.5px;color:var(--red);font-weight:600}
+.xl-dup-msg{font-size:10.5px;color:var(--orange);font-weight:600}
+.xl-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 13px;text-align:center}
+.xl-stat-lbl{font-size:10px;font-weight:600;color:var(--text4);text-transform:uppercase;margin-bottom:4px}
+.xl-stat-val{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+
 </style>
 </head>
 <body>
@@ -474,6 +498,7 @@ td{padding:10px 12px;color:var(--text2);vertical-align:middle}
         <div class="sec-hd">
           <div><div class="sec-title">수입 관리</div><div class="sec-sub">수입 내역을 기록하세요</div></div>
           <button class="btn btn-primary btn-sm" onclick="openAddTx('income')">+ 수입 추가</button>
+          <button class="btn btn-secondary btn-sm" onclick="openExcelUpload('income')">📊 엑셀 업로드</button>
         </div>
         <div class="filter-bar">
           <div class="si"><span class="sic">🔍</span><input type="text" class="search-inp" id="incSearch" placeholder="메모 검색..." oninput="renderIncome()"></div>
@@ -496,6 +521,7 @@ td{padding:10px 12px;color:var(--text2);vertical-align:middle}
         <div class="sec-hd">
           <div><div class="sec-title">지출 관리</div><div class="sec-sub">지출 내역을 기록하세요</div></div>
           <button class="btn btn-primary btn-sm" onclick="openAddTx('expense')">+ 지출 추가</button>
+          <button class="btn btn-secondary btn-sm" onclick="openExcelUpload('expense')">📊 엑셀 업로드</button>
         </div>
         <div class="filter-bar">
           <div class="si"><span class="sic">🔍</span><input type="text" class="search-inp" id="expSearch" placeholder="메모 검색..." oninput="renderExpense()"></div>
@@ -655,6 +681,112 @@ td{padding:10px 12px;color:var(--text2);vertical-align:middle}
 </div>
 
 <!-- TOAST -->
+
+<!-- ========== EXCEL UPLOAD MODAL ========== -->
+<div class="modal-ov" id="xlModalOv">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-hd">
+      <span class="modal-title" id="xlModalTitle">📊 엑셀 일괄 업로드</span>
+      <button class="modal-x" onclick="closeXlModal()">✕</button>
+    </div>
+    <div class="modal-bd" id="xlModalBody">
+      <!-- STEP 1: 파일 선택 -->
+      <div id="xlStep1">
+        <!-- 은행 자동 인식 안내 -->
+        <div style="background:linear-gradient(135deg,var(--blue-lt),var(--pur-lt));border:1px solid var(--blue-lt2);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:22px">🏦</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">은행·카드사 거래내역 자동 인식</div>
+            <div style="font-size:11.5px;color:var(--text3);line-height:1.7">국민·신한·하나·우리·농협·카카오뱅크·토스·삼성카드·현대카드 거래내역을 그대로 업로드하면 자동으로 인식합니다.</div>
+          </div>
+        </div>
+        <!-- 드래그앤드롭 영역 -->
+        <div class="xl-drop-zone" id="xlDropZone"
+          ondragover="xlDragOver(event)" ondragleave="xlDragLeave(event)" ondrop="xlDrop(event)"
+          onclick="document.getElementById('xlFileInput').click()">
+          <div class="xl-drop-icon">📂</div>
+          <div class="xl-drop-title">파일을 여기에 끌어다 놓거나 클릭하여 선택</div>
+          <div class="xl-drop-sub">지원 형식: .xlsx · .xls · .csv</div>
+          <div id="xlFileName" class="xl-file-name"></div>
+        </div>
+        <input type="file" id="xlFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlFileSelected(event)">
+        <!-- 샘플 양식 다운로드 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+          <div style="font-size:12px;color:var(--text4)">
+            💡 처음 사용하신다면 샘플 양식을 다운로드하여 형식을 확인하세요
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="downloadSample()">⬇️ 샘플 양식 다운로드</button>
+        </div>
+        <!-- 지원 형식 안내 -->
+        <div style="margin-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">지원하는 파일 형식</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="xlFormatBadges"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+          <button class="btn btn-secondary" onclick="closeXlModal()">취소</button>
+          <button class="btn btn-primary" id="xlParseBtn" onclick="xlParseFile()" disabled style="opacity:.5">다음 →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: 미리보기 -->
+      <div id="xlStep2" style="display:none">
+        <!-- 통계 카드 -->
+        <div id="xlPreviewStats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:16px"></div>
+        <!-- 인식된 형식 -->
+        <div id="xlDetectedFormat" style="margin-bottom:12px"></div>
+        <!-- 중복 경고 -->
+        <div id="xlDupWarning" style="display:none;background:var(--yel-lt);border:1px solid var(--yellow);border-radius:var(--r2);padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--text)"></div>
+        <!-- 데이터 테이블 -->
+        <div style="max-height:340px;overflow-y:auto;border-radius:var(--r);border:1px solid var(--border)">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead style="background:var(--surface2);position:sticky;top:0;z-index:1">
+              <tr>
+                <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);width:40px">행</th>
+                <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">날짜</th>
+                <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">구분</th>
+                <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">카테고리</th>
+                <th style="padding:8px 10px;text-align:right;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">금액</th>
+                <th style="padding:8px 10px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">메모</th>
+                <th style="padding:8px 10px;text-align:center;font-size:10px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">상태</th>
+              </tr>
+            </thead>
+            <tbody id="xlPreviewTable"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap">
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="xlGoBack()">← 뒤로</button>
+            <button class="btn btn-secondary btn-sm" id="xlErrDownBtn" onclick="downloadErrors()" style="display:none">⬇️ 오류 목록 다운로드</button>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" id="xlSkipDupBtn" onclick="xlUpload(true)" style="display:none">중복 제외 후 등록</button>
+            <button class="btn btn-primary" id="xlUploadBtn" onclick="xlUpload(false)">✅ 등록하기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: 업로드 진행 -->
+      <div id="xlStep3" style="display:none;text-align:center;padding:30px 20px">
+        <div style="font-size:36px;margin-bottom:14px">⏳</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">업로드 중...</div>
+        <div style="font-size:13px;color:var(--text4);margin-bottom:20px" id="xlProgressText">0 / 0 건 처리 중</div>
+        <div style="background:var(--surface3);border-radius:99px;height:8px;overflow:hidden;max-width:360px;margin:0 auto">
+          <div id="xlProgressBar" style="height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),var(--purple));transition:width .3s ease;width:0%"></div>
+        </div>
+      </div>
+
+      <!-- STEP 4: 완료 -->
+      <div id="xlStep4" style="display:none;text-align:center;padding:30px 20px">
+        <div style="font-size:48px;margin-bottom:16px">🎉</div>
+        <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:8px">업로드 완료!</div>
+        <div id="xlResultText" style="font-size:13px;color:var(--text3);margin-bottom:20px;line-height:1.8"></div>
+        <div id="xlResultCards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:0 auto 20px"></div>
+        <button class="btn btn-primary" onclick="closeXlModal()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 <input type="file" id="restoreFile" accept=".json" style="display:none">
 
@@ -1176,6 +1308,595 @@ window.doSaveAsset=async function(key){ const val=parseFloat(document.getElement
 function openModal(title,body){ document.getElementById('modalTitle').textContent=title; document.getElementById('modalBody').innerHTML=body; document.getElementById('modalOv').classList.add('open'); }
 function closeModal(){ document.getElementById('modalOv').classList.remove('open'); fabOpen=false; document.getElementById('fab').classList.remove('open'); }
 document.getElementById('modalOv').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+/* =====================================================
+  EXCEL UPLOAD — 엑셀 일괄 업로드 시스템
+  
+  지원 형식:
+  - 기본 양식 (날짜|구분|카테고리|금액|메모)
+  - 국민은행, 신한은행, 하나은행, 우리은행, 농협
+  - 카카오뱅크, 토스
+  - 삼성카드, 현대카드, KB국민카드, 신한카드
+===================================================== */
+
+/* --------------------------------------------------
+  은행/카드사별 컬럼 매핑 정의
+-------------------------------------------------- */
+const BANK_FORMATS = {
+  moneyflow: {
+    name: 'MoneyFlow 기본 양식',
+    icon: '💰',
+    detect: h => h.some(c=>norm(c)==='날짜') && h.some(c=>norm(c)==='구분') && h.some(c=>norm(c)==='카테고리'),
+    dateCol:  ['날짜'],
+    typeCol:  ['구분'],
+    catCol:   ['카테고리'],
+    amtCol:   ['금액'],
+    memoCol:  ['메모'],
+    typeIncome:  ['수입'],
+    typeExpense: ['지출'],
+  },
+  kb_bank: {
+    name: '국민은행 거래내역',
+    icon: '🏦',
+    detect: h => h.some(c=>norm(c).includes('거래일자')||norm(c).includes('거래일시')) && h.some(c=>norm(c).includes('출금액')||norm(c).includes('출금금액')),
+    dateCol:  ['거래일자','거래일시','날짜'],
+    inCol:    ['입금액','입금금액','입금(원)','입금'],
+    outCol:   ['출금액','출금금액','출금(원)','출금'],
+    memoCol:  ['적요','내용','거래내용','메모','거래메모'],
+    isBankStyle: true,
+  },
+  shinhan_bank: {
+    name: '신한은행 거래내역',
+    icon: '🏦',
+    detect: h => h.some(c=>norm(c).includes('거래일자')) && h.some(c=>norm(c).includes('출금금액')||norm(c).includes('입금금액')) && h.some(c=>norm(c).includes('거래내용')),
+    dateCol:  ['거래일자','거래일시'],
+    inCol:    ['입금금액','입금'],
+    outCol:   ['출금금액','출금'],
+    memoCol:  ['거래내용','적요','메모'],
+    isBankStyle: true,
+  },
+  hana_bank: {
+    name: '하나은행 거래내역',
+    icon: '🏦',
+    detect: h => h.some(c=>norm(c).includes('거래일')) && h.some(c=>norm(c).includes('출금액')) && h.some(c=>norm(c).includes('잔액')),
+    dateCol:  ['거래일','거래일자'],
+    inCol:    ['입금액','입금'],
+    outCol:   ['출금액','출금'],
+    memoCol:  ['거래내용','적요','내용'],
+    isBankStyle: true,
+  },
+  woori_bank: {
+    name: '우리은행 거래내역',
+    icon: '🏦',
+    detect: h => h.some(c=>norm(c).includes('거래일자')) && h.some(c=>norm(c).includes('출금액')) && h.some(c=>norm(c).includes('잔액')),
+    dateCol:  ['거래일자','일자'],
+    inCol:    ['입금액'],
+    outCol:   ['출금액'],
+    memoCol:  ['적요','거래내용'],
+    isBankStyle: true,
+  },
+  nh_bank: {
+    name: '농협 거래내역',
+    icon: '🏦',
+    detect: h => h.some(c=>norm(c)==='거래일자'||norm(c)==='날짜') && h.some(c=>norm(c).includes('출금액')||norm(c).includes('지급액')),
+    dateCol:  ['거래일자','날짜','일자'],
+    inCol:    ['입금액','수납액'],
+    outCol:   ['출금액','지급액'],
+    memoCol:  ['적요','내용','거래내용'],
+    isBankStyle: true,
+  },
+  kakaobank: {
+    name: '카카오뱅크 거래내역',
+    icon: '🟡',
+    detect: h => h.some(c=>norm(c).includes('거래일시')) && h.some(c=>norm(c).includes('금액')) && h.some(c=>norm(c).includes('잔액')),
+    dateCol:  ['거래일시','거래일자'],
+    amtSignCol: ['금액'],   // +출금 -입금 또는 반대
+    memoCol:  ['거래내용','내용','메모'],
+    isBankStyle: true,
+    signLogic: 'plus_is_income',
+  },
+  toss: {
+    name: '토스 거래내역',
+    icon: '🔵',
+    detect: h => h.some(c=>norm(c)==='날짜') && h.some(c=>norm(c)==='금액') && h.some(c=>norm(c)==='잔액'),
+    dateCol:  ['날짜','거래일'],
+    amtSignCol: ['금액'],
+    memoCol:  ['내용','거래내용','메모'],
+    isBankStyle: true,
+    signLogic: 'minus_is_expense',
+  },
+  samsung_card: {
+    name: '삼성카드 이용내역',
+    icon: '💳',
+    detect: h => h.some(c=>norm(c).includes('이용일자')||norm(c).includes('이용일')) && h.some(c=>norm(c).includes('이용금액')||norm(c).includes('금액')) && h.some(c=>norm(c).includes('가맹점')||norm(c).includes('이용가맹점')),
+    dateCol:  ['이용일자','이용일'],
+    amtCol:   ['이용금액','금액'],
+    memoCol:  ['이용가맹점','가맹점명','가맹점'],
+    isCardStyle: true,
+  },
+  hyundai_card: {
+    name: '현대카드 이용내역',
+    icon: '💳',
+    detect: h => h.some(c=>norm(c).includes('이용일')) && h.some(c=>norm(c).includes('이용금액')) && h.some(c=>norm(c).includes('가맹점')),
+    dateCol:  ['이용일','이용일자'],
+    amtCol:   ['이용금액','승인금액'],
+    memoCol:  ['가맹점명','이용가맹점','가맹점'],
+    isCardStyle: true,
+  },
+  kb_card: {
+    name: 'KB국민카드 이용내역',
+    icon: '💳',
+    detect: h => h.some(c=>norm(c).includes('이용일')) && h.some(c=>norm(c).includes('이용금액')) && h.some(c=>norm(c).includes('이용하신곳')||norm(c).includes('가맹점')),
+    dateCol:  ['이용일','승인일'],
+    amtCol:   ['이용금액','승인금액'],
+    memoCol:  ['이용하신곳','가맹점명','이용가맹점'],
+    isCardStyle: true,
+  },
+  shinhan_card: {
+    name: '신한카드 이용내역',
+    icon: '💳',
+    detect: h => h.some(c=>norm(c).includes('이용일자')||norm(c).includes('승인일자')) && h.some(c=>norm(c).includes('이용금액')) && h.some(c=>norm(c).includes('가맹점')),
+    dateCol:  ['이용일자','승인일자','이용일'],
+    amtCol:   ['이용금액','승인금액'],
+    memoCol:  ['가맹점명','이용가맹점','가맹점'],
+    isCardStyle: true,
+  },
+};
+
+/* --------------------------------------------------
+  카테고리 자동 매핑 키워드
+-------------------------------------------------- */
+const CAT_KEYWORDS = {
+  '식사':       ['식비','음식','밥','점심','저녁','아침','식당','음식점','배달','요식','분식','한식','중식','일식','양식'],
+  '커피 & 베이커리': ['카페','커피','베이커리','빵','디저트','스타벅스','투썸','이디야','할리스','빽다방','메가커피'],
+  '편의점':     ['편의점','gs25','cu편의점','세븐일레븐','미니스톱','이마트24'],
+  '쇼핑':       ['쇼핑','온라인쇼핑','쿠팡','네이버쇼핑','11번가','옥션','지마켓','티몬','위메프','의류','패션','옷'],
+  '백화점':     ['백화점','롯데백화점','신세계','현대백화점','갤러리아','akmall'],
+  '주유 & 대중교통': ['주유','sk에너지','gs칼텍스','현대오일뱅크','대중교통','지하철','버스','택시','카카오택시','우버','기차','ktx','고속도로','하이패스','주차'],
+  '병원 & 약국': ['병원','의원','한의원','약국','클리닉','치과','안과','피부과','내과','의료'],
+  '자기계발':   ['교육','학원','강의','강좌','인강','온라인강의','도서','책','문구','자격증','udemy','클래스101'],
+  '통신비':     ['통신','kt','skt','lgu','sk텔레콤','lg유플러스','인터넷','핸드폰','휴대폰'],
+  '보험':       ['보험','생명보험','손해보험','실손','화재보험'],
+  '문화생활':   ['영화','cgv','롯데시네마','megabox','공연','콘서트','전시','뮤지컬','도서관','넷플릭스','유튜브','스포티파이','구독'],
+  '여행':       ['여행','숙박','호텔','에어비앤비','항공','비행기','여행사','관광'],
+  '경조사':     ['경조사','결혼','축의금','부의금','조의'],
+  '기타':       [],
+};
+
+/* --------------------------------------------------
+  전역 변수
+-------------------------------------------------- */
+let xlParsedRows   = [];   // 파싱된 전체 행
+let xlValidRows    = [];   // 유효 행
+let xlErrorRows    = [];   // 오류 행
+let xlDupRows      = [];   // 중복 행
+let xlDetectedFmt  = null; // 감지된 뱅크 포맷
+let xlUploadType   = 'expense'; // 현재 업로드 타입
+let xlRawFile      = null; // 원본 파일
+
+/* --------------------------------------------------
+  헬퍼
+-------------------------------------------------- */
+function norm(s){ return String(s||'').trim().replace(/\s+/g,'').toLowerCase(); }
+function normDate(v){
+  if(!v) return null;
+  const s = String(v).trim().replace(/\./g,'-').replace(/\//g,'-');
+  // YYYY-MM-DD
+  if(/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) return s.substring(0,10);
+  // YYYYMMDD
+  if(/^\d{8}$/.test(s.replace(/-/g,''))) { const r=s.replace(/-/g,''); return `${r.slice(0,4)}-${r.slice(4,6)}-${r.slice(6,8)}`; }
+  // Excel 날짜 숫자
+  if(/^\d{5}$/.test(String(v))){ try{ const d=XLSX.SSF.parse_date_code(parseInt(v)); return `${d.y}-${pad(d.m)}-${pad(d.d)}`; }catch(e){} }
+  // 엑셀 날짜 변환 시도
+  if(typeof v === 'number'){ try{ const d=new Date(Math.round((v - 25569)*86400*1000)); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }catch(e){} }
+  return null;
+}
+function normAmt(v){
+  if(v===null||v===undefined||v==='') return null;
+  const n = parseFloat(String(v).replace(/[,₩\s원]/g,''));
+  return isNaN(n) ? null : Math.abs(n);
+}
+function getCol(row, candidates){
+  for(const c of candidates){ if(row[c]!==undefined&&row[c]!==null&&row[c]!=='') return row[c]; }
+  return null;
+}
+function guessCategory(memo){
+  if(!memo) return '기타';
+  const m = norm(memo);
+  for(const [cat, keywords] of Object.entries(CAT_KEYWORDS)){
+    if(cat==='기타') continue;
+    if(keywords.some(k=>m.includes(k))) return cat;
+  }
+  return '기타';
+}
+
+/* --------------------------------------------------
+  포맷 배지 렌더
+-------------------------------------------------- */
+function renderFormatBadges(){
+  const el = document.getElementById('xlFormatBadges');
+  if(!el) return;
+  el.innerHTML = Object.values(BANK_FORMATS).map(f=>`
+    <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:500;color:var(--text3)">
+      ${f.icon} ${f.name}
+    </span>`).join('');
+}
+
+/* --------------------------------------------------
+  모달 열기/닫기
+-------------------------------------------------- */
+function openExcelUpload(type){
+  xlUploadType = type;
+  xlParsedRows=[]; xlValidRows=[]; xlErrorRows=[]; xlDupRows=[]; xlRawFile=null; xlDetectedFmt=null;
+  document.getElementById('xlModalTitle').textContent = `📊 엑셀 일괄 업로드 — ${type==='income'?'수입':'지출'}`;
+  document.getElementById('xlFileName').textContent = '';
+  document.getElementById('xlParseBtn').disabled = true;
+  document.getElementById('xlParseBtn').style.opacity = '.5';
+  document.getElementById('xlFileInput').value = '';
+  xlShowStep(1);
+  renderFormatBadges();
+  document.getElementById('xlModalOv').classList.add('open');
+}
+function closeXlModal(){
+  document.getElementById('xlModalOv').classList.remove('open');
+  refreshTab();
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const ov = document.getElementById('xlModalOv');
+  if(ov) ov.addEventListener('click', function(e){ if(e.target===this) closeXlModal(); });
+});
+function xlShowStep(n){
+  [1,2,3,4].forEach(i=>{ const el=document.getElementById('xlStep'+i); if(el) el.style.display=i===n?'':'none'; });
+}
+
+/* --------------------------------------------------
+  드래그앤드롭
+-------------------------------------------------- */
+function xlDragOver(e){ e.preventDefault(); document.getElementById('xlDropZone').classList.add('drag-over'); }
+function xlDragLeave(e){ document.getElementById('xlDropZone').classList.remove('drag-over'); }
+function xlDrop(e){
+  e.preventDefault();
+  document.getElementById('xlDropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) xlSetFile(file);
+}
+function xlFileSelected(e){ const file=e.target.files[0]; if(file) xlSetFile(file); }
+function xlSetFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['xlsx','xls','csv'].includes(ext)){ toast('지원하지 않는 파일 형식입니다 (.xlsx, .xls, .csv)', 'err'); return; }
+  xlRawFile = file;
+  document.getElementById('xlFileName').textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)}KB)`;
+  document.getElementById('xlParseBtn').disabled = false;
+  document.getElementById('xlParseBtn').style.opacity = '1';
+}
+
+/* --------------------------------------------------
+  파일 파싱
+-------------------------------------------------- */
+async function xlParseFile(){
+  if(!xlRawFile){ toast('파일을 먼저 선택해주세요','err'); return; }
+  try{
+    const buf = await xlRawFile.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array', cellDates:false, raw:false});
+    const ws  = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+    if(raw.length < 2){ toast('데이터가 없습니다','err'); return; }
+
+    // 헤더 행 찾기 (빈 행 스킵)
+    let headerRowIdx = 0;
+    for(let i=0;i<Math.min(15,raw.length);i++){
+      const row = raw[i];
+      if(row.some(c=>c!==null&&c!==undefined&&String(c).trim()!=='')){ headerRowIdx=i; break; }
+    }
+    const headers = raw[headerRowIdx].map(c=>String(c||'').trim());
+
+    // 포맷 감지
+    xlDetectedFmt = null;
+    for(const [key,fmt] of Object.entries(BANK_FORMATS)){
+      if(fmt.detect(headers)){ xlDetectedFmt={key,...fmt}; break; }
+    }
+    if(!xlDetectedFmt){ xlDetectedFmt={key:'unknown',name:'알 수 없는 형식 (기본 양식으로 처리)',icon:'📄',...BANK_FORMATS.moneyflow}; }
+
+    // 데이터 행 파싱
+    const dataRows = raw.slice(headerRowIdx+1);
+    xlParsedRows = []; xlValidRows = []; xlErrorRows = [];
+
+    dataRows.forEach((row,idx)=>{
+      if(row.every(c=>c===''||c===null)) return; // 빈 행 스킵
+      const obj={};
+      headers.forEach((h,i)=>{ obj[h]=row[i]; });
+      const result = xlMapRow(obj, idx+headerRowIdx+2, xlDetectedFmt);
+      xlParsedRows.push(result);
+      if(result.errors.length) xlErrorRows.push(result);
+      else xlValidRows.push(result);
+    });
+
+    // 중복 감지
+    await detectDuplicates();
+
+    // 미리보기 렌더
+    renderPreview();
+    xlShowStep(2);
+  }catch(err){
+    console.error(err);
+    toast('파일 파싱 오류: '+err.message, 'err');
+  }
+}
+
+/* --------------------------------------------------
+  행 매핑 (은행/카드 형식 → 표준)
+-------------------------------------------------- */
+function xlMapRow(obj, rowNum, fmt){
+  const result = { rowNum, original:obj, errors:[], isDup:false };
+
+  // 날짜
+  const rawDate = getCol(obj, fmt.dateCol||[]);
+  result.date = normDate(rawDate);
+  if(!result.date) result.errors.push('날짜 형식 오류 또는 누락');
+
+  // 금액 및 구분 (형식별 처리)
+  if(fmt.isCardStyle){
+    // 카드: 모두 지출
+    const rawAmt = getCol(obj, fmt.amtCol||[]);
+    result.amount = normAmt(rawAmt);
+    result.type   = 'expense';
+    if(!result.amount||result.amount<=0) result.errors.push('금액 오류');
+  }
+  else if(fmt.isBankStyle){
+    // 은행: 입금/출금 컬럼 별도
+    if(fmt.amtSignCol){
+      // 금액 + 부호로 판단 (카카오뱅크, 토스)
+      const rawAmt = getCol(obj, fmt.amtSignCol||[]);
+      const signed = parseFloat(String(rawAmt||'').replace(/[,₩\s원]/g,''));
+      if(fmt.signLogic==='minus_is_expense'){
+        result.amount = Math.abs(signed);
+        result.type   = signed<0?'expense':'income';
+      } else {
+        result.amount = Math.abs(signed);
+        result.type   = signed>=0?'income':'expense';
+      }
+    } else {
+      // 입금/출금 컬럼 분리
+      const rawIn  = getCol(obj, fmt.inCol||[]);
+      const rawOut = getCol(obj, fmt.outCol||[]);
+      const inAmt  = normAmt(rawIn);
+      const outAmt = normAmt(rawOut);
+      if(outAmt&&outAmt>0){ result.amount=outAmt; result.type='expense'; }
+      else if(inAmt&&inAmt>0){ result.amount=inAmt; result.type='income'; }
+      else { result.amount=0; result.type='expense'; result.errors.push('금액 오류'); }
+    }
+    if(!result.amount||result.amount<=0) result.errors.push('금액 오류');
+  }
+  else {
+    // 기본 MoneyFlow 형식
+    const rawAmt  = getCol(obj, fmt.amtCol||['금액']);
+    const rawType = getCol(obj, fmt.typeCol||['구분']);
+    result.amount = normAmt(rawAmt);
+    const typeStr = norm(rawType||'');
+    if((fmt.typeIncome||['수입']).map(norm).includes(typeStr)) result.type='income';
+    else if((fmt.typeExpense||['지출']).map(norm).includes(typeStr)) result.type='expense';
+    else { result.type='expense'; if(rawType) result.errors.push('구분 오류(수입/지출)'); }
+    if(!result.amount||result.amount<=0) result.errors.push('금액 오류');
+  }
+
+  // 업로드 타입 필터 (수입/지출 관리에서 열었을 때)
+  // 은행/카드 형식은 두 종류 모두 허용, 기본 형식은 필터링
+  if(!fmt.isBankStyle&&!fmt.isCardStyle){
+    if(result.type!==xlUploadType){ result.skip=true; }
+  }
+
+  // 카테고리
+  const rawCat = getCol(obj, fmt.catCol||['카테고리']);
+  if(rawCat){ result.category = String(rawCat).trim()||'기타'; }
+  else { result.category = '기타'; }
+
+  // 메모
+  const rawMemo = getCol(obj, fmt.memoCol||['메모']);
+  result.memo = String(rawMemo||'').trim();
+
+  // 카테고리 자동 매핑 (카드/은행 스타일)
+  if(fmt.isCardStyle||fmt.isBankStyle){
+    result.category = guessCategory(result.memo);
+  }
+
+  return result;
+}
+
+/* --------------------------------------------------
+  중복 감지
+-------------------------------------------------- */
+async function detectDuplicates(){
+  xlDupRows = [];
+  const existing = appState.transactions;
+  xlValidRows.forEach(r=>{
+    const isDup = existing.some(tx=>
+      tx.date===r.date &&
+      tx.amount===r.amount &&
+      tx.category===r.category &&
+      (tx.memo||'')===(r.memo||'')
+    );
+    r.isDup = isDup;
+    if(isDup) xlDupRows.push(r);
+  });
+}
+
+/* --------------------------------------------------
+  미리보기 렌더
+-------------------------------------------------- */
+function renderPreview(){
+  // 감지된 형식 표시
+  document.getElementById('xlDetectedFormat').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--green-lt);border:1px solid var(--green);border-radius:var(--r2)">
+      <span style="font-size:18px">${xlDetectedFmt.icon}</span>
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--green)">인식된 형식: ${xlDetectedFmt.name}</span>
+        <span style="font-size:11px;color:var(--text4);margin-left:8px">총 ${xlParsedRows.filter(r=>!r.skip).length}행 인식</span>
+      </div>
+    </div>`;
+
+  // 통계
+  const visRows  = xlParsedRows.filter(r=>!r.skip);
+  const validCnt = visRows.filter(r=>!r.errors.length).length;
+  const errCnt   = visRows.filter(r=>r.errors.length).length;
+  const incRows  = visRows.filter(r=>!r.errors.length&&r.type==='income');
+  const expRows  = visRows.filter(r=>!r.errors.length&&r.type==='expense');
+  const incSum   = incRows.reduce((s,r)=>s+r.amount,0);
+  const expSum   = expRows.reduce((s,r)=>s+r.amount,0);
+  document.getElementById('xlPreviewStats').innerHTML = [
+    {l:'전체',v:visRows.length+'건',c:''},
+    {l:'정상',v:validCnt+'건',c:'var(--green)'},
+    {l:'오류',v:errCnt+'건',c:errCnt?'var(--red)':'var(--text4)'},
+    {l:'중복',v:xlDupRows.length+'건',c:xlDupRows.length?'var(--orange)':'var(--text4)'},
+    {l:'수입',v:W(incSum),c:'var(--blue)'},
+    {l:'지출',v:W(expSum),c:'var(--red)'},
+  ].map(s=>`<div class="xl-stat-card"><div class="xl-stat-lbl">${s.l}</div><div class="xl-stat-val" style="color:${s.c||'var(--text)'}">${s.v}</div></div>`).join('');
+
+  // 중복 경고
+  const dupWarn = document.getElementById('xlDupWarning');
+  if(xlDupRows.length){
+    dupWarn.style.display='';
+    dupWarn.innerHTML=`⚠️ <strong>${xlDupRows.length}건의 중복 데이터</strong>가 발견되었습니다. 등록 방법을 선택해주세요.`;
+    document.getElementById('xlSkipDupBtn').style.display='';
+    document.getElementById('xlUploadBtn').textContent='중복 포함 모두 등록';
+  } else {
+    dupWarn.style.display='none';
+    document.getElementById('xlSkipDupBtn').style.display='none';
+    document.getElementById('xlUploadBtn').textContent=`✅ ${validCnt}건 등록하기`;
+  }
+
+  // 오류 다운로드 버튼
+  document.getElementById('xlErrDownBtn').style.display = errCnt?'':'none';
+
+  // 테이블
+  const tbody = document.getElementById('xlPreviewTable');
+  tbody.innerHTML = visRows.map(r=>{
+    const hasErr = r.errors.length>0;
+    const cls    = hasErr?'xl-row-err':r.isDup?'xl-row-dup':'xl-row-ok';
+    const badge  = r.type==='income'
+      ? '<span class="badge b-blue" style="font-size:10px">수입</span>'
+      : '<span class="badge b-red" style="font-size:10px">지출</span>';
+    const status = hasErr
+      ? `<span class="xl-err-msg">❌ ${r.errors.join(', ')}</span>`
+      : r.isDup
+        ? '<span class="xl-dup-msg">⚠️ 중복</span>'
+        : '<span style="font-size:10.5px;color:var(--green)">✅</span>';
+    return `<tr class="${cls}">
+      <td style="padding:7px 10px;text-align:center;color:var(--text4);border-bottom:1px solid var(--border)">${r.rowNum}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap">${r.date||'<span style="color:var(--red)">오류</span>'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${badge}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${r.category||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-variant-numeric:tabular-nums;color:${r.type==='income'?'var(--blue)':'var(--red)'}">${r.amount?W(r.amount):'-'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text3)">${r.memo||''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:center">${status}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* --------------------------------------------------
+  업로드 실행
+-------------------------------------------------- */
+async function xlUpload(skipDup){
+  if(!currentUser){ toast('로그인이 필요합니다','err'); return; }
+  let toUpload = xlValidRows.filter(r=>!r.skip);
+  if(skipDup) toUpload = toUpload.filter(r=>!r.isDup);
+  if(!toUpload.length){ toast('등록할 데이터가 없습니다','inf'); return; }
+
+  xlShowStep(3);
+  const BATCH_SIZE = 499; // Firestore 배치 한도
+  let success=0, fail=0;
+
+  try{
+    for(let i=0;i<toUpload.length;i+=BATCH_SIZE){
+      const chunk  = toUpload.slice(i, i+BATCH_SIZE);
+      const batch  = db.batch();
+      chunk.forEach(r=>{
+        const ref = txCol().doc();
+        batch.set(ref,{
+          type:     r.type,
+          date:     r.date,
+          amount:   r.amount,
+          category: r.category,
+          memo:     r.memo,
+          source:   'excel_upload',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      success += chunk.length;
+      // 진행률 업데이트
+      const pct = (success/toUpload.length*100).toFixed(0);
+      document.getElementById('xlProgressBar').style.width = pct+'%';
+      document.getElementById('xlProgressText').textContent = `${success} / ${toUpload.length} 건 처리 중 (${pct}%)`;
+    }
+  }catch(e){
+    console.error(e);
+    fail = toUpload.length - success;
+  }
+
+  // 완료 화면
+  xlShowStep(4);
+  document.getElementById('xlResultText').innerHTML = `
+    <strong>총 ${toUpload.length}건</strong> 처리 완료<br>
+    ${skipDup?`중복 ${xlDupRows.length}건 제외됨<br>`:''}
+    ${xlErrorRows.length?`오류 ${xlErrorRows.length}건 제외됨<br>`:''}
+  `;
+  document.getElementById('xlResultCards').innerHTML = [
+    {l:'✅ 성공',v:success+'건',c:'var(--green)'},
+    {l:'❌ 실패',v:fail+'건',c:fail?'var(--red)':'var(--text4)'},
+  ].map(s=>`<div class="xl-stat-card"><div class="xl-stat-lbl">${s.l}</div><div class="xl-stat-val" style="color:${s.c}">${s.v}</div></div>`).join('');
+
+  toast(`${success}건 업로드 완료!`);
+}
+
+/* --------------------------------------------------
+  뒤로가기
+-------------------------------------------------- */
+function xlGoBack(){
+  xlParsedRows=[]; xlValidRows=[]; xlErrorRows=[]; xlDupRows=[]; xlDetectedFmt=null;
+  xlShowStep(1);
+}
+
+/* --------------------------------------------------
+  샘플 양식 다운로드
+-------------------------------------------------- */
+function downloadSample(){
+  const BOM = '\uFEFF';
+  const csv = [
+    '날짜,구분,카테고리,금액,메모',
+    '2026-06-01,지출,식사,10000,점심식사',
+    '2026-06-02,지출,커피 & 베이커리,4500,스타벅스',
+    '2026-06-03,수입,급여,2500000,6월 월급',
+    '2026-06-04,지출,통신비,55000,핸드폰 요금',
+    '2026-06-05,수입,부수입,150000,프리랜서',
+    '2026-06-06,지출,주유 & 대중교통,3000,버스',
+    '2026-06-07,지출,쇼핑,35000,의류 구매',
+    '2026-06-08,수입,이자,2500,예금 이자',
+  ].join('\n');
+  const blob = new Blob([BOM+csv],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download='moneyflow_sample.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('샘플 양식이 다운로드되었습니다');
+}
+
+/* --------------------------------------------------
+  오류 내역 다운로드
+-------------------------------------------------- */
+function downloadErrors(){
+  const BOM = '\uFEFF';
+  const rows = ['행번호,날짜,구분,금액,오류내용'];
+  xlErrorRows.forEach(r=>{
+    rows.push(`${r.rowNum},${r.date||''},${r.type||''},${r.amount||''},"${r.errors.join('; ')}"`);
+  });
+  const blob = new Blob([BOM+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download='moneyflow_errors.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('오류 내역이 다운로드되었습니다');
+}
+
 </script>
 </body>
 </html>
